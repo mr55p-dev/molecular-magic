@@ -56,7 +56,6 @@ print("**********************************************************************")
 # -- Import data
 with open(cleaned_database_path, "rb") as read_file:
     GDB_data: List[GDB9molecule] = pickle.load(read_file)
-    GDB_data = GDB_data[:100]
 
 print("Read in " + str(len(GDB_data)) + " samples")
 print("Number of samples " + str(len(GDB_data)))
