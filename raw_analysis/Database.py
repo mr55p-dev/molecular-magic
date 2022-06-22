@@ -512,9 +512,8 @@ def GenerateDatabaseFromArchives(strings=True, archivelist = []):
 
 def GenerateDatabaseFromFolders(strings=True, GDBfolders = []):
     # Get GDB folders
-    #GDBroot = '/media/kristaps/SCRATCH/Data/GDB9React_Nov2020'
     GDBroot = '/media/kristaps/SCRATCH/Data/React8Test/out'
-    #GDBroot = '/media/kristaps/SCRATCH/Data/GDB9React'
+    
     dirlist = os.listdir(GDBroot)
 
     if GDBfolders == []:
