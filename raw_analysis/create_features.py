@@ -25,10 +25,10 @@ from create_features_function_defs import (
     GenerateFeatures,
 )
 from create_features_config import (
-    input_file,
-    data_basepath,
+    cleaned_database_path,
+    output_basepath,
     plot_location,
-    Group_to_Use,
+    # Group_to_Use,
     VersionNo,
     atomweight,
     bondweight,
@@ -54,7 +54,7 @@ print("**********************************************************************")
 
 
 # -- Import data
-with open(str(input_file), "rb") as read_file:
+with open(cleaned_database_path, "rb") as read_file:
     GDB_data: List[GDB9molecule] = pickle.load(read_file)
     GDB_data = GDB_data[:100]
 
@@ -714,7 +714,7 @@ print(read_X)
 
 list_X = X.tolist()
 
-with open(data_basepath / "first_10.txt", "w") as first10file:
+with open(output_basepath / "first_10.txt", "w") as first10file:
     for vector in list_X[0:sample_outputnumber]:
         string_vector = " ".join(str(component) for component in vector)
         first10file.write(str(list_X.index(vector) + 1) + "\n")
@@ -722,7 +722,7 @@ with open(data_basepath / "first_10.txt", "w") as first10file:
         first10file.write(string_vector + "\n")
 
 with open(
-    data_basepath / "readable_X.txt",
+    output_basepath / "readable_X.txt",
     "w",
 ) as readableXfile:
     for index in range(len(read_X)):
@@ -730,7 +730,7 @@ with open(
 
 
 # -- Save key vectors
-data_output_dir = data_basepath / "data"
+data_output_dir = output_basepath / "data"
 data_output_dir.mkdir(parents=True, exist_ok=True)
 
 np.save(

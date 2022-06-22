@@ -198,7 +198,7 @@ print("Writing removed filenames")
 # removedmorethaneight.close()
 
 with open(
-    output_basepath / "no_strained_angles.txt" "w",
+    output_basepath / "no_strained_angles.txt", "w"
 ) as removedstrainednamesandangles:
     for index in range(len(Removed_Filenames)):
         filename = Removed_Filenames[index]
@@ -229,8 +229,9 @@ with open(
 
 # removedzeroG.close()
 
-
-with open(output_basepath / "data" / "cleaned_data.pkl", "wb") as GDBDataFile:
+output_dir = output_basepath / "data"
+output_dir.mkdir(parents=True, exist_ok=True)
+with open(output_dir / "cleaned_data.pkl", "wb") as GDBDataFile:
     pickle.dump(GDB_data, GDBDataFile)
 
 print("Done")

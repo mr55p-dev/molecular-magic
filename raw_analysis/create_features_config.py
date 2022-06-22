@@ -23,15 +23,12 @@ sampleoutputnumber  Ouput features vector X upto this number
 
 from pathlib import Path
 
-
-input_file = str(
-    Path("./GDB_allgroundnoimagnocarban_Dec2021_G298_LongBondLimit1.6.plk")
-)
+data_basepath = Path("./static_data/")
+cleaned_database_path = data_basepath / "clean_database_output" / "data" / "cleaned_data.pkl"
 
 MaxAtoms = 8
-PickleFile = "GDB_allgroundnoimagnocarban_Dec2021_G298_LongBondLimit1.6.plk"
-data_basepath = Path("static_data/create_features_output/")
-plot_location = data_basepath / "plots/"
+output_basepath = Path("static_data/create_features_output/")
+plot_location = output_basepath / "plots/"
 scaling_factor = 627.509608030593  # kcal/mol
 Group_to_Use = "A"
 MaxBondLength = 2.0  # Angstroms
