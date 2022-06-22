@@ -96,7 +96,7 @@ print('')
 
 
 
-logging.info('')      
+logging.info('')
 logging.info('**********************************************************************')
 logging.info('')
 logging.info('KRR_Energies.py')
