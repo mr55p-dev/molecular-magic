@@ -292,12 +292,13 @@ def RemoveCarbanions(GDBclass):
             #print('Molecule failed the carbanion test: '+str(FailedFilename))
             FailedFilenames += [FailedFilename]
 
-    fail_output_file_path = output_basepath / 'meta_results' / '_failedcarbanion.txt'
-    failoutputfile = open(fail_output_file_path, 'w')
-    for fail_molname in FailedFilenames:
-        failoutputfile.write(fail_molname+',1'+'\n')
-    failoutputfile.close() 
-    
+    fail_output_path = output_basepath / 'meta_results'
+    fail_output_path.mkdir(parents=True, exist_ok=True)
+
+    with open(fail_output_path / '_failedcarbanion.txt', 'w') as failoutputfile:
+        for fail_molname in FailedFilenames:
+            failoutputfile.write(fail_molname+',1'+'\n')
+
     return NonCarbanions
                    
 
@@ -323,12 +324,13 @@ def RemoveSmallMolecules(GDBclass, heavyatomlimit):
             FailedFilename = ExtractFilename(mol)
             FailedFilenames += [FailedFilename]
 
-    fail_output_file_path = output_basepath / 'meta_results' / '_failedsmallmolecules.txt'
-    failoutputfile = open(fail_output_file_path, 'w')
-    for fail_molname in FailedFilenames:
-        failoutputfile.write(fail_molname+',1'+'\n')
-    failoutputfile.close()
-    
+    fail_output_path = output_basepath / 'meta_results'
+    fail_output_path.mkdir(parents=True, exist_ok=True)
+
+    with open(fail_output_path / '_failedsmallmolecules.txt', 'w') as failoutputfile:
+        for fail_molname in FailedFilenames:
+            failoutputfile.write(fail_molname+',1'+'\n')
+
     return HeavyMols
 
 
