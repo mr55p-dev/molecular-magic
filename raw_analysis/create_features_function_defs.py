@@ -1,9 +1,14 @@
+"""
+Function definitions for manipulating the molecules defined in Database.py
+"""
+
+from pathlib import Path
 import sys
 from collections import Counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-import openbabel as ob
+from openbabel import openbabel as ob
 from scipy.stats import gaussian_kde
 
 from create_features_config import (
@@ -99,8 +104,8 @@ def GetAtomNum(AtomSymbol):
         return 0
 
 
-def FindKDEMax(distribution_data, distribution_type, location, name, kde_width):
-
+def FindKDEMax(distribution_data, distribution_type, location: Path, name, kde_width):
+    """MODIFIED TO NOT SAVE FILES"""
     KDE_maximas = []
 
     kde = gaussian_kde(distribution_data, bw_method=kde_width)
@@ -221,15 +226,16 @@ def FindKDEMax(distribution_data, distribution_type, location, name, kde_width):
         markersize=3,
     )
 
-    # plt.ylim([-1.2,1.2])
+    # Ensure the target dir exists
+    location.mkdir(parents=True, exist_ok=True)
 
     plt.legend()
-    plt.savefig(location + name + ".png", format="png", dpi=500)
+    plt.savefig(location / (name + "_kde_plot" + ".png"), format="png", dpi=500)
     plt.close()
 
-    np.save(location + name, distribution_data, allow_pickle=True)
+    np.save(location / name, distribution_data, allow_pickle=True)
 
-    x_maximas_outputfile = open(location + name + ".txt", "w")
+    x_maximas_outputfile = open(location / (name + "_kde_maximas" + ".txt"), "w")
     for item in x_maximas:
         x_maximas_outputfile.write(str(item) + ",")
     x_maximas_outputfile.close()

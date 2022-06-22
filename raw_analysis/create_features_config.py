@@ -30,7 +30,8 @@ input_file = str(
 
 MaxAtoms = 8
 PickleFile = "GDB_allgroundnoimagnocarban_Dec2021_G298_LongBondLimit1.6.plk"
-plot_location = "CreateFeatures_v20_fAng_fNH_B0p07_A0p07_G298_2"
+data_basepath = Path("static_data/create_features_output/")
+plot_location = data_basepath / "plots/"
 scaling_factor = 627.509608030593  # kcal/mol
 Group_to_Use = "A"
 MaxBondLength = 2.0  # Angstroms

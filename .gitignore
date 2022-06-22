@@ -139,3 +139,6 @@ dmypy.json
 
 # OS X
 .DS_Store
+
+# Data output
+static_data/

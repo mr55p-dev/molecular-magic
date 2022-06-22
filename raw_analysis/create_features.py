@@ -1,16 +1,17 @@
 """
-
 Original name CreateFeatures_Gy_v1_withsave
 
-Main Code
+This file serves the purpose of opening a pickled array of GDB9molecule objects and compiling a feature and labels vector from them.
+It uses the functions defined in `create_features_function_defs` and the constant settings defined in `create_features_config`
 """
 
+from pathlib import Path
 import pickle
 import sys
 from typing import List
 
 import numpy as np
-import openbabel as ob
+from openbabel import openbabel as ob
 
 from create_features_function_defs import (
     AtomTypeNumbers,
@@ -25,6 +26,7 @@ from create_features_function_defs import (
 )
 from create_features_config import (
     input_file,
+    data_basepath,
     plot_location,
     Group_to_Use,
     VersionNo,
@@ -54,6 +56,7 @@ print("**********************************************************************")
 # -- Import data
 with open(str(input_file), "rb") as read_file:
     GDB_data: List[GDB9molecule] = pickle.load(read_file)
+    GDB_data = GDB_data[:100]
 
 print("Read in " + str(len(GDB_data)) + " samples")
 print("Number of samples " + str(len(GDB_data)))
@@ -75,15 +78,15 @@ print("Creating OBmol object for all input files")
 
 y = []  # target vector for machine learning
 
-"""
-Feature generation step 1 summary:
-- Read in the molecule objects from the database and generate OBmol objects.
-- Iterate over all OBmol objects and extract data for bond, angle, dihedral etc
-- Generate histograms and find KDE maximas and minimas, the KDE maximas will become features
-- OBmol_data contains bond, angle, dihedral etc data for each molecule
-- BondLengths contains overall bond data for all molecules in the database
-"""
 
+###########################################################################################
+# Feature generation step 1 summary:
+# - Read in the molecule objects from the database and generate OBmol objects.
+# - Iterate over all OBmol objects and extract data for bond, angle, dihedral etc
+# - Generate histograms and find KDE maximas and minimas, the KDE maximas will become features
+# - OBmol_data contains bond, angle, dihedral etc data for each molecule
+# - BondLengths contains overall bond data for all molecules in the database
+###########################################################################################
 
 # -- These variables will be used to generate the distribution plots --
 BondLengths = (
@@ -132,16 +135,8 @@ for mol in GDB_data:
 # -- Generate target vector array and save as pickle file
 y = np.array(y)
 
-
-# -- Iterate over all OBMol object created for all molecules
-
-
-print("Reading bonds, angles and torsions for all OBmol objects")
-
-
-# -- Loop over all OBmol objects created for all molecules
+# -- Loop over all OBmol objects created for all molecules and save all the types of bond in the database
 for OBmol in GDB_OBmols:
-
     # -- Same dictionary definition as above but these are for one particular molecule, not for the entire database
     MolBondData = dict()
     MolAngleData = dict()
@@ -152,7 +147,9 @@ for OBmol in GDB_OBmols:
 
     # -- Extract N atoms with one, two and three H atoms
     for OBmolatom in ob.OBMolAtomIter(OBmol):  # iterate through all atoms in OBmol
-        valencedata = str(OBmolatom.GetValence())
+        valencedata = str(
+            OBmolatom.GetTotalValence()
+        )  # GetValence() is no longer bound
         atomdata = str(OBmolatom.GetType())
 
         if "N" in atomdata:
@@ -167,8 +164,6 @@ for OBmol in GDB_OBmols:
 
             if number_of_neighbourH > 0:
                 MolNHatomData["NH" + str(number_of_neighbourH)] += 1
-
-    # print(MolNHatomData)
 
     # -- Extract hydrogen bonding data
     OBmol_Hbondtype, OBmol_Hbonddata = SelectHBonds(OBmol)
@@ -230,7 +225,7 @@ for OBmol in GDB_OBmols:
         # create separate group depending on central carbon coordination number
         # for example CC3C means CCC bond angle where the central carbon has coordination number of 3
         if str(angletype[0]) == "C":
-            C_coordno = OBmol.GetAtom(OBmolangle[0] + 1).GetValence()  # CHANGED
+            C_coordno = OBmol.GetAtom(OBmolangle[0] + 1).GetTotalValence()  # CHANGED
             angletype[0] = angletype[0] + str(C_coordno)
 
         if (
@@ -512,17 +507,18 @@ for OBmol in GDB_OBmols:
     sys.stdout.flush()
 
 
+###########################################################################################
 # Feature generation step 2 summary:
 # - The first step is to find all maxima and minima on KDE plots for all distribution.
 # - BondFeaturesDef etc are dictionaries containing KDE maximas and KDE minimas.
 # - These dictionaries are also stored as pickle files
-
+###########################################################################################
 
 # -- Define dictionaries to generate features matrix X
-BondFeaturesDef = dict()
-AngleFeaturesDef = dict()
-DihedralFeaturesDef = dict()
-HbondFeaturesDef = dict()
+BondFeaturesDef = {}
+AngleFeaturesDef = {}
+DihedralFeaturesDef = {}
+HbondFeaturesDef = {}
 
 
 print("\n")
@@ -539,7 +535,7 @@ for key, value in HbondTypes.items():
         Hbond_KDEmaximas, Hbond_maximas, Hbond_minimas = FindKDEMax(
             value,
             "Hbond",
-            "./" + plot_location + "/HbondPlots/",
+            plot_location / "hbond",
             str(key),
             XHbondkdewidth,
         )
@@ -567,17 +563,17 @@ for key, value in BondLengths.items():
         bond_KDEmaximas, bond_maximas, bond_minimas = FindKDEMax(
             value,
             "XHbond",
-            "./" + plot_location + "/BondPlots/",
+            plot_location / "bond/",
             str(key),
             XHbondkdewidth,
         )
     elif len(value) > 1 and "H" not in str(key):  # normal KDE width for all other bonds
         bond_KDEmaximas, bond_maximas, bond_minimas = FindKDEMax(
-            value, "bond", "./" + plot_location + "/BondPlots/", str(key), bondkdewidth
+            value, "bond", plot_location / "bond/", str(key), bondkdewidth
         )
     else:
         bond_maximas, bond_minimas = SingleDataDist(
-            value, "./" + plot_location + "/BondPlots/", str(key)
+            value, plot_location / "bond/", str(key)
         )  # if only one maxima exists in the distribution
 
     # print('bond_KDEmaximas: ', bond_KDEmaximas)
@@ -596,13 +592,13 @@ for key, value in AnglesTypes.items():
         angle_KDEmaximas, angle_maximas, angle_minimas = FindKDEMax(
             value,
             "angle",
-            "./" + plot_location + "/AnglePlots/",
+            plot_location / "angle/",
             str(key),
             anglekdewidth,
         )
     else:
         angle_maximas, angle_minimas = SingleDataDist(
-            value, "./" + plot_location + "/AnglePlots/", str(key)
+            value, plot_location / "angle/", str(key)
         )
 
     # print('angle_KDEmaximas: ', angle_KDEmaximas)
@@ -621,13 +617,13 @@ for key, value in DihedralTypes.items():
         dihedral_KDEmaximas, dihedral_maximas, dihedral_minimas = FindKDEMax(
             value,
             "dihedral",
-            "./" + plot_location + "/DihedralPlots/",
+            plot_location / "dihedral/",
             str(key),
             anglekdewidth,
         )
     else:
         dihedral_maximas, dihedral_minimas = SingleDataDist(
-            value, "./" + plot_location + "/DihedralPlots/", str(key)
+            value, plot_location / "dihedral/", str(key)
         )
 
     # print('dihedral_KDEmaximas: ', dihedral_KDEmaximas)
@@ -639,52 +635,53 @@ print("Max_Atomtypes: ", Max_Atomtypes)
 
 print("Saving features dictionaries - use them to generate features on a new dataset")
 
-BondFeaturesDefFile = open(
-    "./" + plot_location + "/" + plot_location + "_BondFeaturesDef.plk", "wb"
-)
-pickle.dump(BondFeaturesDef, BondFeaturesDefFile)
-BondFeaturesDefFile.close()
-print("Saved BondFeaturesDef")
-print(BondFeaturesDef)
+# BondFeaturesDefFile = open(
+#     "./" + plot_location + "/" + plot_location + "_BondFeaturesDef.plk", "wb"
+# )
+# pickle.dump(BondFeaturesDef, BondFeaturesDefFile)
+# BondFeaturesDefFile.close()
+# print("Saved BondFeaturesDef")
+# print(BondFeaturesDef)
 
-AngleFeaturesDefFile = open(
-    "./" + plot_location + "/" + plot_location + "_AngleFeaturesDef.plk", "wb"
-)
-pickle.dump(AngleFeaturesDef, AngleFeaturesDefFile)
-AngleFeaturesDefFile.close()
-print("Saved AngleFeaturesDef")
-print(AngleFeaturesDef)
+# AngleFeaturesDefFile = open(
+#     "./" + plot_location + "/" + plot_location + "_AngleFeaturesDef.plk", "wb"
+# )
+# pickle.dump(AngleFeaturesDef, AngleFeaturesDefFile)
+# AngleFeaturesDefFile.close()
+# print("Saved AngleFeaturesDef")
+# print(AngleFeaturesDef)
 
-DihedralFeaturesDefFile = open(
-    "./" + plot_location + "/" + plot_location + "_DihedralFeaturesDef.plk", "wb"
-)
-pickle.dump(DihedralFeaturesDef, DihedralFeaturesDefFile)
-DihedralFeaturesDefFile.close()
-print("Saved DihedralFeaturesDef")
-print(DihedralFeaturesDef)
+# DihedralFeaturesDefFile = open(
+#     "./" + plot_location + "/" + plot_location + "_DihedralFeaturesDef.plk", "wb"
+# )
+# pickle.dump(DihedralFeaturesDef, DihedralFeaturesDefFile)
+# DihedralFeaturesDefFile.close()
+# print("Saved DihedralFeaturesDef")
+# print(DihedralFeaturesDef)
 
-MaxAtomTypesDefFile = open(
-    "./" + plot_location + "/" + plot_location + "_MaxAtomTypesDef.plk", "wb"
-)
-pickle.dump(Max_Atomtypes, MaxAtomTypesDefFile)
-MaxAtomTypesDefFile.close()
-print("Saved MaxAtomTypesDef")
-print(Max_Atomtypes)
+# MaxAtomTypesDefFile = open(
+#     "./" + plot_location + "/" + plot_location + "_MaxAtomTypesDef.plk", "wb"
+# )
+# pickle.dump(Max_Atomtypes, MaxAtomTypesDefFile)
+# MaxAtomTypesDefFile.close()
+# print("Saved MaxAtomTypesDef")
+# print(Max_Atomtypes)
 
-HbondFeaturesDefFile = open(
-    "./" + plot_location + "/" + plot_location + "_HbondFeaturesDef.plk", "wb"
-)
-pickle.dump(HbondFeaturesDef, HbondFeaturesDefFile)
-MaxAtomTypesDefFile.close()
-print("Saved HbondFeaturesDef")
-print(HbondFeaturesDef)
+# HbondFeaturesDefFile = open(
+#     "./" + plot_location + "/" + plot_location + "_HbondFeaturesDef.plk", "wb"
+# )
+# pickle.dump(HbondFeaturesDef, HbondFeaturesDefFile)
+# MaxAtomTypesDefFile.close()
+# print("Saved HbondFeaturesDef")
+# print(HbondFeaturesDef)
 
 
+###########################################################################################
 # Feature generation step 3 summary:
 # - This step creates features matrix X. The maximas on KDE plots for bonds, angles, dihedrals etc becomes the feature components.
 # - The algorithm calculates number of times a particular feature component exists for each molecules, for example, how many 'CC' bonds does the molecule contain?
 # - This is then added to the matrix X for each molecule.
-
+###########################################################################################
 
 print("The algorithm will use the following weights:")
 print("bondweight: ", atomweight)
@@ -717,44 +714,15 @@ print(read_X)
 
 list_X = X.tolist()
 
-first_10_filename = (
-    "./"
-    + plot_location
-    + "/GDB"
-    + str(Group_to_Use)
-    + "_"
-    + plot_location
-    + "_"
-    + VersionNo
-    + "_f"
-    + str(len(X[0]))
-    + "_first10"
-    + ".txt"
-)
-
-with open(first_10_filename, "w") as first10file:
+with open(data_basepath / "first_10.txt", "w") as first10file:
     for vector in list_X[0:sample_outputnumber]:
         string_vector = " ".join(str(component) for component in vector)
         first10file.write(str(list_X.index(vector) + 1) + "\n")
         first10file.write(first10names[list_X.index(vector)] + "\n")
         first10file.write(string_vector + "\n")
 
-readableXfile_filename = (
-    "./"
-    + plot_location
-    + "/GDB"
-    + str(Group_to_Use)
-    + "_"
-    + plot_location
-    + "_"
-    + VersionNo
-    + "_f"
-    + str(len(X[0]))
-    + "_readableX"
-    + ".txt"
-)
 with open(
-    readableXfile_filename,
+    data_basepath / "readable_X.txt",
     "w",
 ) as readableXfile:
     for index in range(len(read_X)):
@@ -762,39 +730,20 @@ with open(
 
 
 # -- Save key vectors
+data_output_dir = data_basepath / "data"
+data_output_dir.mkdir(parents=True, exist_ok=True)
 
 np.save(
-    "./"
-    + plot_location
-    + "/GDB"
-    + str(Group_to_Use)
-    + "_"
-    + plot_location
-    + "_"
-    + VersionNo
-    + "_f"
-    + str(len(X[0]))
-    + "_X",
+    data_output_dir / "features.npy",
     X,
     allow_pickle=True,
 )
 np.save(
-    "./"
-    + plot_location
-    + "/GDB"
-    + str(Group_to_Use)
-    + "_"
-    + plot_location
-    + "_"
-    + VersionNo
-    + "_f"
-    + str(len(X[0]))
-    + "_yG",
+    data_output_dir / "labels.npy",
     y,
     allow_pickle=True,
 )
 
 
-print("There are " + str(len(X[0])) + " number of features")
-
+print("There are " + str(len(X[0])) + " features")
 print("Successfully created feature vector X and target vector y")
