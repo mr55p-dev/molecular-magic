@@ -11,7 +11,7 @@ machine learning on molecule energies
 @author: sl884
 University of Cambridge
 
-This version essentially uncaps the max number of features to sample
+This version sets the max number of features sampled as 500
 """
 
 ##############################################################################
@@ -19,6 +19,7 @@ This version essentially uncaps the max number of features to sample
 ##############################################################################
 
 
+from pathlib import Path
 import sys
 print("Printing version info for help reporting bugs")
 print("Python version:", sys.version)
@@ -48,19 +49,19 @@ from sklearn.model_selection import train_test_split
 
 
 filename = 'RF_Energies_v1'
-save_directory = 'TrialE2'
-version = 'TrialE2fromA2_n6000_dNone_run3'
+save_directory = 'TrialE1'
+version = 'TrialE1fromA2_ms0p4_mf500_run1'
 Test_Size = 0.33
 Random_State = 42
 
 # Hyperparameters to tune
-Max_Samples = 0.999          # percentage of the training data to make boostrap sample
-Max_Features = 761         # number of features that is randomly sampled
-N_Estimators = 6000         # number of trees
-Max_Depth = None             # maximum tree depth
+Max_Samples = 0.4          # percentage of the training data to make boostrap sample
+Max_Features = 500         # number of features that is randomly sampled
+N_Estimators = 1000         # number of trees
+Max_Depth = 20             # maximum tree depth
 
 
-logging.basicConfig(filename=save_directory+'/'+filename+'_'+version+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/rf.log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -117,9 +118,9 @@ logging.info('Max_Depth:')
 logging.info(Max_Depth)
 
 # import feature and target vectors
-
-X = np.load('./CreateFeatures_v20_fAng_fNH_B0p07_A0p07/GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_v1_f761_X.npy', allow_pickle=True)
-y = np.load('./CreateFeatures_v20_fAng_fNH_B0p07_A0p07/GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_v1_f761_y.npy', allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 y_round = np.round(y, decimals=5)
 
@@ -140,9 +141,12 @@ predictions = RF_model.predict(X_test)
 data = pd.DataFrame(data= {'Actual Energy [kcal/mol]': y_test, \
                            'Predicted Energy [kcal/mol]': predictions})
 
-data.to_csv(path_or_buf='./'+save_directory+'/'+filename+'_'+version+'_'+'predicted_vs_actual_energy.csv')
-pickle.dump(RF_model, open('./'+save_directory+'/'+filename+'_'+version+'.plk', 'wb'))
+output_path = Path("static_data/rf/")
+output_path.mkdir(parents=True, exist_ok=True)
+data.to_csv(path_or_buf=output_path / "E1_predictions.csv")
 
+with open(output_path / "E1_model.pkl", 'wb') as outfile:
+    pickle.dump(RF_model, outfile)
 
 print('')
 print('Training completed')

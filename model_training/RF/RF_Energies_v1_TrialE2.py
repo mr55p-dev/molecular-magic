@@ -11,7 +11,7 @@ machine learning on molecule energies
 @author: sl884
 University of Cambridge
 
-This version sets the max number of features sampled as 500
+This version essentially uncaps the max number of features to sample
 """
 
 ##############################################################################
@@ -49,16 +49,16 @@ from sklearn.model_selection import train_test_split
 
 
 filename = 'RF_Energies_v1'
-save_directory = 'TrialE1'
-version = 'TrialE1fromA2_ms0p4_mf500_run1'
+save_directory = 'TrialE2'
+version = 'TrialE2fromA2_n6000_dNone_run3'
 Test_Size = 0.33
 Random_State = 42
 
 # Hyperparameters to tune
-Max_Samples = 0.4          # percentage of the training data to make boostrap sample
-Max_Features = 500         # number of features that is randomly sampled
-N_Estimators = 1000         # number of trees
-Max_Depth = 20             # maximum tree depth
+Max_Samples = 0.999          # percentage of the training data to make boostrap sample
+Max_Features = 761         # number of features that is randomly sampled
+N_Estimators = 6000         # number of trees
+Max_Depth = None             # maximum tree depth
 
 
 logging.basicConfig(filename='logs/rf.log', level=logging.DEBUG, format='%(message)s', filemode='w')
@@ -143,10 +143,11 @@ data = pd.DataFrame(data= {'Actual Energy [kcal/mol]': y_test, \
 
 output_path = Path("static_data/rf/")
 output_path.mkdir(parents=True, exist_ok=True)
-data.to_csv(path_or_buf=output_path / "predictions.csv")
+data.to_csv(path_or_buf=output_path / "E2_predictions.csv")
 
-with open(output_path / "model.pkl", 'wb') as outfile:
+with open(output_path / "E2_model.pkl", 'wb') as outfile:
     pickle.dump(RF_model, outfile)
+
 
 print('')
 print('Training completed')
