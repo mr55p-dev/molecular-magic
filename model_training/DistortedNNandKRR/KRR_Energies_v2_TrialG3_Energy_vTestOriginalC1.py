@@ -5,7 +5,7 @@ Created on Thu Oct 31 10:35:37 2019
 
 KRR_Energies.py
 
-Using numpy objects GDB_X.npy and GDB_y.npy performs Kernel Ridge Regression 
+Using numpy objects GDB_X.npy and GDB_y.npy performs Kernel Ridge Regression
 machine learning on molecule energies
 
 @author: sl884
@@ -18,6 +18,7 @@ University of Cambridge
 ##############################################################################
 
 
+from pathlib import Path
 import sys
 print("Printing version info for help reporting bugs")
 print("Python version:", sys.version)
@@ -58,7 +59,7 @@ Xtest_name = 'GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_Distv2_0p01_Rep1_v1_f
 ytest_name = 'GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_Distv2_0p01_Rep1_v1_f761_y_test.npy'
 
 
-logging.basicConfig(filename=save_directory+'/'+filename+'_'+version+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/krr.log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -67,7 +68,7 @@ formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 # Main Code
 ##############################################################################
 
-print('')      
+print('')
 print('**********************************************************************')
 print('')
 print('KRR_Energies.py')
@@ -109,13 +110,9 @@ logging.info('')
 
 
 # import feature and target vectors
-
-X = np.load('./'+file_directory+'/'+Xtest_name, allow_pickle=True)
-y = np.load('./'+file_directory+'/'+ytest_name, allow_pickle=True)
-
-#np.set_printoptions(threshold=sys.maxsize)
-#print(X)
-#sys.quit()
+data_basepath = Path("static_data/create_features_output/data/")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 y_rounded = np.round(y,5)
 y_load_rounded = y_rounded.tolist()

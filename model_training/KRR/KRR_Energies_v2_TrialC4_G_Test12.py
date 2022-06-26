@@ -18,6 +18,7 @@ University of Cambridge
 ##############################################################################
 
 
+from pathlib import Path
 import sys
 print("Printing version info for help reporting bugs")
 print("Python version:", sys.version)
@@ -58,7 +59,7 @@ Xtest_name = 'GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_G298_Test12_v1_f781_X
 ytest_name = 'GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_G298_Test12_v1_f781_y.npy'
 
 
-logging.basicConfig(filename=save_directory+'/'+filename+'_'+version+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/krrc4.log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -109,9 +110,9 @@ logging.info('')
 
 
 # import feature and target vectors
-
-X = np.load('./'+file_directory+'/'+Xtest_name, allow_pickle=True)
-y = np.load('./'+file_directory+'/'+ytest_name, allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 #np.set_printoptions(threshold=sys.maxsize)
 #print(X)

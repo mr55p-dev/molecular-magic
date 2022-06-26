@@ -1,5 +1,6 @@
-# %%
+# %%import csv
 import csv
+from pathlib import Path
 import sys
 
 import numpy as np
@@ -11,7 +12,6 @@ from keras.optimizers import Adam
 from keras.regularizers import l2
 from sklearn.model_selection import train_test_split
 
-# %%
 AtomOrder = ["C", "H", "N", "O"]
 
 # Data loading
@@ -20,13 +20,13 @@ X_filename = "GDBA_CreateFeatures_v20_fAng_fDih_fNH_B0p05_A0p07_v1_f812_X.npy"
 y_filename = "GDBA_CreateFeatures_v20_fAng_fDih_fNH_B0p05_A0p07_v1_f812_y.npy"
 
 Random_State = 50
-# %%
+
 # Notes from the original author
 # IMPORTANT
 
 # Check whether the X vector atomtypes are located at X[-15:11]
 # Check whether the molecular feature is in order of C N O H
-# %%
+
 # Model parameters
 model_name = "NN_Energies"
 model_version = "trial_"
@@ -43,18 +43,18 @@ activation_function = "linear"
 activation_function2 = "relu"
 loss_function = "mean_squared_error"
 optimizer_type = Adam(learning_rate=learning_rate)
-# %% 
+
 # Weight initializations
-# BUGFIX why use these initializers
 kernel_initialiser = initializers.RandomUniform(minval=-500, maxval=100)
 kernel_initialiser2 = initializers.RandomUniform(minval=0, maxval=0.1)
 
 bias_initialiser = initializers.RandomUniform(minval=0, maxval=10)
 bias_initialiser2 = initializers.RandomUniform(minval=0, maxval=0.01)
-# %%
+
 # -- Import feature and target vectors
-X_load = np.load("./" + data_dir + "/" + X_filename, allow_pickle=True)
-y_load = np.load("./" + data_dir + "/" + y_filename, allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data")
+X_load = np.load(data_basepath / "features.npy", allow_pickle=True)
+y_load = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 # Round the targets to 5 dp (why?)
 y_rounded = np.round(y_load, 5)
@@ -64,60 +64,40 @@ y_rounded = np.round(y_load, 5)
 # y_load_rounded = y_rounded.tolist()
 
 # -- Import Molecular Formulas
-# BUGFIX find the location of Energy_Dataframe.csv
 Edist_df = pd.read_csv("Mol_Dist_v1/Energy_Dataframe.csv")
 
-Sample_N = Edist_df["Number_of_Samples"]
+# Sample_N = Edist_df["Number_of_Samples"]
 
 Mol_Forms = Edist_df["Mol_Forms"]
 Unique_Mol_Forms = set(Mol_Forms)
 
 # -- Divide the data into sub categories
-X_dict = {form: [] for form in Mol_Forms}
-y_dict = {form: [] for form in Mol_Forms}
+X_dict = {}
+y_dict = {}
+
+for MolForm in Unique_Mol_Forms:
+    X_dict[MolForm] = []
+    y_dict[MolForm] = []
 
 first10_AtomList100 = []
 
-atom_list = (X_load[:, -15:-11] / 100).astype(int)
-atom_order = {
-    "C": 0,
-    "H": 1,
-    "N": 2,
-    "O": 3,
-}
-formulae = np.apply_along_axis(
-    lambda x: f"C{x[atom_order['C']]}N{x[atom_order['N']]}O{x[atom_order['O']]}H{x[atom_order['H']]}",
-    0,
-    atom_list
-).tolist()
 
-X_dict = {val: atom_list[idx, :] for idx, val in enumerate(formulae)}
-Y_dict = {val: y_dict[idx, :] for idx, val in enumerate(formulae)}
+for index in range(len(y_load)):
 
-for index, _ in enumerate(y_load):
-    # Extract the current instance
-    X_vector = X_load[index, :]
-    y_value = y_load[index, :]
+    X_vector = X_load[index]
+    y_value = y_load[index]
 
-    # Extract the slice of the vector which corresponds to the atom type counts
     AtomList100 = X_vector[-15:-11]
-
+    #print('AtomList')
+    #print(AtomList100)
+    
     if index < 10:
         first10_AtomList100 += [AtomList100]
-
-    AtomList = [int(x_i / 100) for x_i in AtomList100]
-
-    Molecular_Formula = (
-        "C"
-        + str(AtomList[AtomOrder.index("C")])
-        + "N"
-        + str(AtomList[AtomOrder.index("N")])
-        + "O"
-        + str(AtomList[AtomOrder.index("O")])
-        + "H"
-        + str(AtomList[AtomOrder.index("H")])
-    )
-
+    
+    AtomList = [int(x_i/100) for x_i in AtomList100]
+    
+    Molecular_Formula = 'C'+str(AtomList[AtomOrder.index('C')])+'N'+str(AtomList[AtomOrder.index('N')])+'O'+str(AtomList[AtomOrder.index('O')])+'H'+str(AtomList[AtomOrder.index('H')])
+    
     X_dict[Molecular_Formula].append(X_vector)
     y_dict[Molecular_Formula].append(y_value)
 
@@ -328,26 +308,26 @@ y_test = np.array(y_test)
 # logging.info("")
 # logging.info("Saving training and test set X and y matrices")
 
-np.save(
-    "./" + model_output_dir + "/" + model_name + "_" + model_version + "_X_train",
-    X_train,
-    allow_pickle=True,
-)
-np.save(
-    "./" + model_output_dir + "/" + model_name + "_" + model_version + "_X_test",
-    X_test,
-    allow_pickle=True,
-)
-np.save(
-    "./" + model_output_dir + "/" + model_name + "_" + model_version + "_y_train",
-    y_train,
-    allow_pickle=True,
-)
-np.save(
-    "./" + model_output_dir + "/" + model_name + "_" + model_version + "_y_test",
-    y_test,
-    allow_pickle=True,
-)
+# np.save(
+#     "./" + model_output_dir + "/" + model_name + "_" + model_version + "_X_train",
+#     X_train,
+#     allow_pickle=True,
+# )
+# np.save(
+#     "./" + model_output_dir + "/" + model_name + "_" + model_version + "_X_test",
+#     X_test,
+#     allow_pickle=True,
+# )
+# np.save(
+#     "./" + model_output_dir + "/" + model_name + "_" + model_version + "_y_train",
+#     y_train,
+#     allow_pickle=True,
+# )
+# np.save(
+#     "./" + model_output_dir + "/" + model_name + "_" + model_version + "_y_test",
+#     y_test,
+#     allow_pickle=True,
+# )
 
 
 X_trainmean = X_train.mean()
@@ -370,7 +350,6 @@ for element in y_test:
 y_trainmatrix = np.array(y_trainmatrix)
 y_testmatrix = np.array(y_testmatrix)
 
-# %%
 ###############################################################################
 # Construct the NN architecture
 ###############################################################################

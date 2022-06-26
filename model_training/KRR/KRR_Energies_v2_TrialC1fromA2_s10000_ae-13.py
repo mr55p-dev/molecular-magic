@@ -18,6 +18,7 @@ University of Cambridge
 ##############################################################################
 
 
+from pathlib import Path
 import sys
 print("Printing version info for help reporting bugs")
 print("Python version:", sys.version)
@@ -33,17 +34,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.model_selection import learning_curve
 
-try:
-    import qml
-    from qml.kernels import gaussian_kernel
-    from qml.kernels import laplacian_kernel
-    from qml.math import cho_solve
-    from qml.representations import get_slatm_mbtypes
-    
-    print("QML version:",qml.__version__)
-except ImportError:
-    print("Failed to find QML")
-    print("Please follow instructions here: http://www.qmlcode.org/installation.html")
+# try:
+#     import qml
+#     from qml.kernels import gaussian_kernel
+#     from qml.kernels import laplacian_kernel
+#     from qml.math import cho_solve
+#     from qml.representations import get_slatm_mbtypes
+
+#     print("QML version:",qml.__version__)
+# except ImportError:
+#     print("Failed to find QML")
+#     print("Please follow instructions here: http://www.qmlcode.org/installation.html")
 
 
 ##############################################################################
@@ -66,7 +67,7 @@ Test_Size = 0.33
 Random_State = 42
 
 
-logging.basicConfig(filename=save_directory+'/'+filename+'_'+version+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/krr..log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -75,7 +76,7 @@ formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 # Main Code
 ##############################################################################
 
-print('')      
+print('')
 print('**********************************************************************')
 print('')
 print('KRR_Energies.py')
@@ -117,9 +118,9 @@ logging.info('')
 
 
 # import feature and target vectors
-
-X = np.load('./CreateFeatures_v20_fAng_fNH_B0p07_A0p07/GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_v1_f761_X.npy', allow_pickle=True)
-y = np.load('./CreateFeatures_v20_fAng_fNH_B0p07_A0p07/GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_v1_f761_y.npy', allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 y_round = np.round(y, decimals=5)
 

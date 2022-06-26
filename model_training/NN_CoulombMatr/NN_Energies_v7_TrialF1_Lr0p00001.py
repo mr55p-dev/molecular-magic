@@ -18,6 +18,7 @@ University of Cambridge
 # Import Modules
 ##############################################################################
 
+from pathlib import Path
 import numpy as np
 import logging
 import time
@@ -81,7 +82,7 @@ kernel_initialiser2 = initializers.RandomUniform(minval=0, maxval=0.1)
 bias_initialiser = initializers.RandomUniform(minval=0, maxval=10)
 bias_initialiser2 = initializers.RandomUniform(minval=0, maxval=0.01)
 
-logging.basicConfig(filename=save_directory+'/'+code_name+'_'+version_no+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/nn_energies.log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -160,9 +161,9 @@ logging.info('bias_initialiser: '+str(bias_initialiser))
 logging.info('bias_initialiser2: '+str(bias_initialiser2))
 
 # -- Import feature and target vectors
-
-X = np.load('./'+file_directory+'/'+X_name, allow_pickle=True)
-y = np.load('./'+file_directory+'/'+y_name, allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 y_rounded = np.round(y,5)
 y_list = list(y_rounded)
@@ -224,11 +225,11 @@ print('Saving training and test set X and y matrices')
 logging.info('')
 logging.info('Saving training and test set X and y matrices')
 
-np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_X_train', X_train, allow_pickle=True)
-np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_X_test', X_test, allow_pickle=True)
-np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_y_train', y_train, allow_pickle=True)
-np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_y_test', y_test, allow_pickle=True)
-
+# WHY WOULD YOU WANT TO SAVE ALL THESE DICTS????
+# np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_X_train', X_train, allow_pickle=True)
+# np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_X_test', X_test, allow_pickle=True)
+# np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_y_train', y_train, allow_pickle=True)
+# np.save('./'+save_directory+'/'+code_name+'_'+version_no+'_y_test', y_test, allow_pickle=True)
 
 
 X_trainmean = X_train.mean()

@@ -5,7 +5,7 @@ Created on Thu Oct 31 10:35:37 2019
 
 KRR_Energies.py
 
-Using numpy objects GDB_X.npy and GDB_y.npy performs Kernel Ridge Regression 
+Using numpy objects GDB_X.npy and GDB_y.npy performs Kernel Ridge Regression
 machine learning on molecule energies
 
 @author: sl884

@@ -88,7 +88,7 @@ formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
 
 ##############################################################################
-# Functions
+# Functions (unused)
 ##############################################################################
 
 def rectified(value):
@@ -317,8 +317,8 @@ for index1 in range(len(y_load)):
             logging.info(X_vector)
             logging.info('X_vector_test: ')
             logging.info(X_vector)
-            sys.exit()
-        
+            raise ValueError()
+
     elif y_energy in y_test:
         #print('This y_energy is in the Test set')
         index2 = y_test.index(y_energy)
@@ -333,7 +333,7 @@ for index1 in range(len(y_load)):
             logging.info(X_vector)
             logging.info('X_vector_test: ')
             logging.info(X_vector)
-            sys.exit()
+            raise ValueError()
         
     else:
         removed_energies += [y_energy]
