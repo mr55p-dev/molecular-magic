@@ -11,6 +11,7 @@ machine learning on molecule energies
 @author: sl884
 University of Cambridge
 
+This version essentially uncaps the max number of features to sample
 """
 
 ##############################################################################

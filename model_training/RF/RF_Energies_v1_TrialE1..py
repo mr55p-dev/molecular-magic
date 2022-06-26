@@ -11,6 +11,7 @@ machine learning on molecule energies
 @author: sl884
 University of Cambridge
 
+This version sets the max number of features sampled as 500
 """
 
 ##############################################################################
@@ -18,6 +19,7 @@ University of Cambridge
 ##############################################################################
 
 
+from pathlib import Path
 import sys
 print("Printing version info for help reporting bugs")
 print("Python version:", sys.version)
@@ -59,7 +61,7 @@ N_Estimators = 1000         # number of trees
 Max_Depth = 20             # maximum tree depth
 
 
-logging.basicConfig(filename=save_directory+'/'+filename+'_'+version+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/rf.log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -116,9 +118,9 @@ logging.info('Max_Depth:')
 logging.info(Max_Depth)
 
 # import feature and target vectors
-
-X = np.load('./CreateFeatures_v20_fAng_fNH_B0p07_A0p07/GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_v1_f761_X.npy', allow_pickle=True)
-y = np.load('./CreateFeatures_v20_fAng_fNH_B0p07_A0p07/GDBA_CreateFeatures_v20_fAng_fNH_B0p07_A0p07_v1_f761_y.npy', allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 y_round = np.round(y, decimals=5)
 
@@ -139,9 +141,12 @@ predictions = RF_model.predict(X_test)
 data = pd.DataFrame(data= {'Actual Energy [kcal/mol]': y_test, \
                            'Predicted Energy [kcal/mol]': predictions})
 
-data.to_csv(path_or_buf='./'+save_directory+'/'+filename+'_'+version+'_'+'predicted_vs_actual_energy.csv')
-pickle.dump(RF_model, open('./'+save_directory+'/'+filename+'_'+version+'.plk', 'wb'))
+output_path = Path("static_data/rf/")
+output_path.mkdir(parents=True, exist_ok=True)
+data.to_csv(path_or_buf=output_path / "predictions.csv")
 
+with open(output_path / "model.pkl", 'wb') as outfile:
+    pickle.dump(RF_model, outfile)
 
 print('')
 print('Training completed')
