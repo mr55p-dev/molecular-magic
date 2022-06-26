@@ -142,3 +142,4 @@ dmypy.json
 
 # Data output
 static_data/
+logs/

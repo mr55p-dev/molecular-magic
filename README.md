@@ -21,7 +21,10 @@ Working repository for modifications to the work done in https://github.com/sanh
 ## Neural network models
 `model_training/NN/NN.py` directory does not currently run, as it requires a CSV with each molecules stoicheometry after feature generation. I have no idea why this isn't included with the data that we have, but it shouldn't be too hard to implement at the end of `raw_analysis/create_features.py`.
 
-Note that the files from `model_training/NN_CoulombMatr` work, as they do not implement the special train-test splitting which `NN` does. They both define a similar architecture, except `NN` contains more nodes in the hidden layers ($812$ vs $351$).
+The only differnce between `NN` and `NN2` is the number of layers in the defined model. The code is identical.
+
+The models from `NN` and `NN2` require the missing CSV to implement the custom splitting.
+The models from `NN_CoulombMatr` do not implement the custom splitting, and so work just fine without it.
 
 ## Kernel Ridge Regression models
 Some of the `model_training/KRR` experiments fail, and this seems to be due to an address boundary error in `sklearn`. Exits with `SIGSEV: Address boundary error`. Also, half of the files save a fitted kernel and the other half load fitted kernels and there is NO NAMING CONVENTION to help out distinguishing the two. I have removed all but one of the files, since they are all basically the same anyway.

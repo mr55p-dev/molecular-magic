@@ -18,6 +18,7 @@ University of Cambridge
 ##############################################################################
 
 
+from pathlib import Path
 import sys
 print("Printing version info for help reporting bugs")
 print("Python version:", sys.version)
@@ -46,7 +47,7 @@ epochs = 200000
 Regularisation = 0.10
 loss_function = 'squared_loss'
 
-logging.basicConfig(filename=save_directory+'/'+code_name+'_'+version_no+'.log', level=logging.DEBUG, format='%(message)s', filemode='w')
+logging.basicConfig(filename='logs/lr.log', level=logging.DEBUG, format='%(message)s', filemode='w')
 datetime_now = datetime.now()
 formatted_datetime = datetime_now.strftime("%Y %b %d %H:%M:%S")
 
@@ -87,9 +88,9 @@ logging.info('******************************************************************
 logging.info('')
 
 # import feature and target vectors
-
-X = np.load('./'+file_directory+'/'+X_name, allow_pickle=True)
-y = np.load('./'+file_directory+'/'+y_name, allow_pickle=True)
+data_basepath = Path("static_data/create_features_output/data/")
+X = np.load(data_basepath / "features.npy", allow_pickle=True)
+y = np.load(data_basepath / "labels.npy", allow_pickle=True)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
 
@@ -185,7 +186,9 @@ print(descaled_predictions)
 data = pd.DataFrame(data= {'Actual Energy [kcal/mol]': y_test, \
                            'Predicted Energy [kcal/mol]': predictions})
 
-data.to_csv(path_or_buf='./'+save_directory+'/'+code_name+'_'+version_no+'_predvsreal.csv')
+output_path = Path("static_data/lr/")
+output_path.mkdir(parents=True)
+data.to_csv(path_or_buf=output_path / "predictions.csv")
 
 print('')
 print('The fitted weights are:')
