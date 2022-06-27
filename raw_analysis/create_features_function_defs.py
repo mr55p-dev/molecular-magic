@@ -460,7 +460,7 @@ def GenerateFeatures(
 
         for atom_key, atom_values in maxatomtypes.items():
 
-            # print('atom_key: ', atom_key)
+            print('atom_key: ', atom_key)
 
             maxatomkeys = list(maxatomtypes.keys())
 
@@ -469,7 +469,7 @@ def GenerateFeatures(
                     MolAtomDict[atom_key] * atomweight
                 )
 
-        Mol_X += feat_vec
+        Mol_X += feat_vec # [714:718]
 
         # -- Hbond Feature Vector Generation
         for hbonddict_key, hbonddict_values in hbonddict.items():
