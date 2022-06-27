@@ -19,12 +19,10 @@ Working repository for modifications to the work done in https://github.com/sanh
 `openbabel` used in the project seems to be version `2.x.x` however this can't be verified due to no requirements file being included. Instead of using this it seems better to migrate to version `3.1.1` and moving forward take advantage of the `pybabel` API rather than the auto-generated C++ bindings. Some corrections which appear to be related to the version change are being made to the original code.
 
 ## Neural network models
-`model_training/NN/NN.py` directory does not currently run, as it requires a CSV with each molecules stoicheometry after feature generation. I have no idea why this isn't included with the data that we have, but it shouldn't be too hard to implement at the end of `raw_analysis/create_features.py`.
+`NN` now works correctly, see `NN_custom_splitting.py` for the reference implementation to circumvent the issue of the missing file. The issue is referenced in [#2](https://github.com/LukeRaw/molecular-magic/issues/2).
+The base neural network will take $\approx 2\ \text{hours}$.
 
 The only differnce between `NN` and `NN2` is the number of layers in the defined model. The code is identical.
-
-The models from `NN` and `NN2` require the missing CSV to implement the custom splitting.
-The models from `NN_CoulombMatr` do not implement the custom splitting, and so work just fine without it.
 
 ## Kernel Ridge Regression models
 Some of the `model_training/KRR` experiments fail, and this seems to be due to an address boundary error in `sklearn`. Exits with `SIGSEV: Address boundary error`. Also, half of the files save a fitted kernel and the other half load fitted kernels and there is NO NAMING CONVENTION to help out distinguishing the two. I have removed all but one of the files, since they are all basically the same anyway.
