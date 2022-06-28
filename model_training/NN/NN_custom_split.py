@@ -20,11 +20,11 @@ Random_State = 50
 model_name = "NN_Energies"
 model_output_dir = Path("static_data/NN_output/TrialA1/")
 
-# Hyperparams
-learning_rate = 0.000001
-epochs = 7000
-decay_rate = 0.00003
+# Hyperparam
+learning_rate = 1e-5
+decay_rate = 3e-5
 batch_size = 64
+epochs = 7000
 
 # Network params
 activation_function = "linear"
@@ -173,46 +173,34 @@ no_features = len(X_trainscaled[0])
 # model set up: build architecture
 model = Sequential(name=model_name)
 
-model.add(
-    Dense(
-        812,
-        input_dim=no_features,
-        activation=activation_function2,
-        kernel_initializer=kernel_initialiser2,
-        bias_initializer=bias_initialiser2,
-        kernel_regularizer=l2(0.1),
-        bias_regularizer=l2(0.1),
-        name="layer1",
-    )
-)
+model.add(Dense(761, \
+                input_dim=no_features, \
+                activation=activation_function2, \
+                kernel_initializer=kernel_initialiser2, \
+                bias_initializer=bias_initialiser2, \
+                kernel_regularizer=l2(0.1), \
+                bias_regularizer=l2(0.1), \
+                name='layer1'))
 
-# model.add(Dropout(0.2))
+#model.add(Dropout(0.2))
 
-model.add(
-    Dense(
-        812,
-        activation=activation_function2,
-        kernel_initializer=kernel_initialiser,
-        bias_initializer=bias_initialiser,
-        kernel_regularizer=l2(0.1),
-        bias_regularizer=l2(0.1),
-        name="layer2",
-    )
-)
+model.add(Dense(761, \
+                activation=activation_function2, \
+                kernel_initializer=kernel_initialiser, \
+                bias_initializer=bias_initialiser, \
+                kernel_regularizer=l2(0.1), \
+                bias_regularizer=l2(0.1), \
+                name='layer2'))
 
-# model.add(Dropout(0.2))
+#model.add(Dropout(0.2))
 
-model.add(
-    Dense(
-        1,
-        activation=activation_function,
-        kernel_initializer=kernel_initialiser,
-        bias_initializer=bias_initialiser,
-        kernel_regularizer=l2(0.1),
-        bias_regularizer=l2(0.1),
-        name="layer3",
-    )
-)
+model.add(Dense(1, \
+                activation=activation_function, \
+                kernel_initializer=kernel_initialiser, \
+                bias_initializer=bias_initialiser, \
+                kernel_regularizer=l2(0.1), \
+                bias_regularizer=l2(0.1), \
+                name='layer3'))
 
 print("Settings for neural network training")
 print(model.summary())

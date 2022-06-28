@@ -35,9 +35,10 @@ MaxBondLength = 2.0  # Angstroms
 VersionNo = "v1"
 atomweight = 100
 bondweight = 1
-bondkdewidth = 0.07
 XHbondkdewidth = 0.3
-anglekdewidth = 0.07
+
+bondkdewidth = 0.07 # B0.07
+anglekdewidth = 0.07 # A0.07
 fileswanted = ["022090A1a.out", "000779A1a.out", "45253A1a.out", "020348A1a.out"]
 
 
