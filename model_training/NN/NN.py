@@ -1,9 +1,6 @@
 """
 Reimplementation of `NN_custom_split.py`
 """
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import tensorflow as tf
 from tensorflow import keras
 import pandas as pd
@@ -12,7 +9,6 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 
-tf.get_logger().setLevel('INFO')
 
 from datetime import datetime
 
@@ -172,7 +168,7 @@ history = model.fit(
             monitor="val_mean_absolute_error",
             mode="min",
             save_best_only=True,
-            save_weights_only=True
+            save_weights_only=True,
         ),
         get_tensorboard_callback(tensorboard_output),
     ],
