@@ -83,23 +83,19 @@ for MolForm in Unique_Mol_Forms:
     y_MolFormList = y_dict[MolForm]
 
     if len(y_MolFormList) == 1:
-        pass
+        continue
     elif len(y_MolFormList) == 2:
-        X_MolFormTrain, X_MolFormTest, y_MolFormTrain, y_MolFormTest = train_test_split(
-            X_MolFormList, y_MolFormList, test_size=0.5, random_state=Random_State
-        )
-        X_train += X_MolFormTrain
-        X_test += X_MolFormTest
-        y_train += y_MolFormTrain
-        y_test += y_MolFormTest
+        split_size = 0.5
     else:
-        X_MolFormTrain, X_MolFormTest, y_MolFormTrain, y_MolFormTest = train_test_split(
-            X_MolFormList, y_MolFormList, test_size=0.33, random_state=Random_State
-        )
-        X_train += X_MolFormTrain
-        X_test += X_MolFormTest
-        y_train += y_MolFormTrain
-        y_test += y_MolFormTest
+        split_size = 0.33
+
+    X_MolFormTrain, X_MolFormTest, y_MolFormTrain, y_MolFormTest = train_test_split(
+        X_MolFormList, y_MolFormList, test_size=split_size, random_state=Random_State
+    )
+    X_train += X_MolFormTrain
+    X_test += X_MolFormTest
+    y_train += y_MolFormTrain
+    y_test += y_MolFormTest
 
 ### Checking the energies are properly assigned
 removed_energies = []
@@ -134,10 +130,12 @@ for index1 in range(len(y_load)):
     else:
         removed_energies += [y_energy]
 
-X_train = np.array(X_train)
-X_test = np.array(X_test)
-y_train = np.array(y_train)
-y_test = np.array(y_test)
+X_train = np.array(X_train) #28302
+X_test = np.array(X_test)   #14120
+y_train = np.array(y_train) # total 42422
+y_test = np.array(y_test) # Removed 49
+
+
 
 X_trainmean = X_train.mean()
 X_trainstd = X_train.std()

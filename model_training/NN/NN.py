@@ -1,6 +1,7 @@
 """
 Reimplementation of `NN_custom_split.py`
 """
+from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from tensorflow import keras
 import pandas as pd
@@ -78,12 +79,11 @@ for formula in X_dict:
         train_items.append((train_candidate, train_energy))
         test_items.append((test_candidate, test_energy))
     else:
-        # For every 3 elements, assign 2 to train and 1 to test
-        for idx, (structure, energy) in enumerate(zip(candidates, y_dict[formula])):
-            if not idx % 3:
-                train_items.append((structure, energy))
-            else:
-                test_items.append((structure, energy))
+        s_train, s_test, e_train, e_test = train_test_split(
+            candidates, y_dict[formula], test_size=0.33, random_state=50
+        )
+        train_items += zip(s_train, e_train)
+        test_items += zip(s_test, e_test)
 
 # Create the train set
 train_features, train_labels = zip(*train_items)
@@ -97,12 +97,13 @@ y_test = np.array(test_labels)
 
 # Rescale the features such that they have variance 0
 # Pretty sure there is a bug in the original code where they forgot to scale the mean to zero aswell...
-def rescale(x: np.ndarray):
-    return (x - x.mean()) / x.std()
+def rescale(x: np.ndarray) -> np.ndarray:
+    # return (x - x.mean()) / x.std()
+    return x / x.std()
 
 
-X_train = rescale(X_train)
-y_train = rescale(y_train)
+X_train = rescale(X_train)  # 28302
+y_train = rescale(y_train)  # 14120
 
 X_test = rescale(X_test)
 y_test = rescale(y_test)
