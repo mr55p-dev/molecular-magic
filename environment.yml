@@ -1,0 +1,7 @@
+name: molemagic
+dependencies:
+  - python=3.9
+  - pip:
+  
+    - tensorflow==2.9
+prefix: /opt/homebrew/Caskroom/miniforge/base/envs/molemagic
