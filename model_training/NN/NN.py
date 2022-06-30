@@ -23,6 +23,10 @@ def minmax_scale(x: np.ndarray()) -> np.ndarray():
     return (x - x.min()) / (x.max() - x.min())
 
 
+###################################################
+# Parameter setup                                 #
+###################################################
+
 # Define save locations
 basepath = Path("static_data/NN_rewrite/")
 basepath.mkdir(parents=True, exist_ok=True)
@@ -41,7 +45,12 @@ epochs = 7000
 
 atom_order = ["C", "H", "N", "O"]
 
-# Load data
+
+###################################################
+# Load and transform the data                     #
+###################################################
+
+# Load the data
 data_basepath = Path("static_data/create_features_output/data")
 X = np.load(data_basepath / "features.npy", allow_pickle=True)
 y = np.load(data_basepath / "labels.npy", allow_pickle=True)
@@ -57,16 +66,18 @@ atom_vector = (X[:, -15:-11] / 100).astype("int")
 molecular_formulae = list(map(create_mol_formula, atom_vector))
 unique_molecular_formulae = set(molecular_formulae)
 
+# Group by formula
 X_dict = defaultdict(list)
 y_dict = defaultdict(list)
 for form, vec, target in zip(molecular_formulae, X, y):
     X_dict[form].append(vec)
     y_dict[form].append(target)
 
+# Put this back into a standard dictionary
 X_dict = dict(**X_dict)
 y_dict = dict(**y_dict)
 
-# Split the data into train and test set based on the rules:
+# Split the data into train and test set
 dropped_structures = []
 train_items = []
 test_items = []
@@ -113,6 +124,30 @@ def rescale(x: np.ndarray) -> np.ndarray:
 
 X_train_norm = X_train / X_train.std()
 X_test_norm = X_test / X_train.std()
+
+# Create tf.data.Dataset
+train_ds = (
+    tf.data.Dataset.from_tensor_slices(
+        (
+            tf.convert_to_tensor(X_train_norm, dtype=tf.float32),
+            tf.convert_to_tensor(y_train, dtype=tf.float32),
+        )
+    )
+    .batch(batch_size=batch_size)
+    .cache()
+    .prefetch(tf.data.AUTOTUNE)
+)
+test_ds = (
+    tf.data.Dataset.from_tensor_slices(
+        (
+            tf.convert_to_tensor(X_test_norm, dtype=tf.float32),
+            tf.convert_to_tensor(y_test, dtype=tf.float32),
+        )
+    )
+    .batch(batch_size=batch_size)
+    .cache()
+    .prefetch(tf.data.AUTOTUNE)
+)
 
 # Define the weight and bias initializers
 kernel_initialiser = keras.initializers.RandomUniform(minval=-500, maxval=100)
@@ -165,9 +200,8 @@ print("Compiled model")
 # Train
 # TODO #6 implement wandb monitoring
 history = model.fit(
-    X_train_norm,
-    y_train,
-    validation_data=(X_test_norm, y_test),
+    train_ds,
+    validation_data=test_ds,
     epochs=epochs,
     batch_size=batch_size,
     callbacks=[
