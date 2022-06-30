@@ -211,6 +211,8 @@ print("Compiled model")
 # Weights and Biases setup                        #
 ###################################################
 
+
+wandb.init(project="MolecularMagic", entity="molecular-magicians")
 wandb.config = {
     "learning_rate": lr,
     "epochs": epochs,
