@@ -40,8 +40,11 @@ model_output = basepath / "model"
 tensorboard_output = basepath / "tb_log"
 metric_output = basepath / "metrics.csv"
 
+random_seed = 50
+tf.random.set_seed(random_seed)
+
 # Define parameters
-seed = 50
+gpus = tf.config.list_logical_devices("GPU")
 lr = 1e-5
 decay_rate = 3e-5
 batch_size = 64
@@ -99,12 +102,11 @@ for formula in X_dict:
         test_items.append((test_candidate, test_energy))
     else:
         s_train, s_test, e_train, e_test = train_test_split(
-            candidates, y_dict[formula], test_size=0.33, random_state=50
+            candidates, y_dict[formula], test_size=0.33, random_state=random_seed
         )
         train_items += zip(s_train, e_train)
         test_items += zip(s_test, e_test)
 
-gpus = tf.config.list_logical_devices("GPU")
 strategy = tf.distribute.MirroredStrategy(gpus)
 # with strategy.scope():
 scope = strategy.scope()
@@ -215,7 +217,7 @@ wandb.config = {
     "batch_size": batch_size,
     "loss_function": loss_function.name,
     "optimizer": optimizer._name,
-    "regularization": regularization_degree
+    "regularization": regularization_degree,
 }
 
 ###################################################
