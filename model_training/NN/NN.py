@@ -114,66 +114,34 @@ bias_initialiser_input = keras.initializers.RandomUniform(minval=0, maxval=0.01)
 
 # Construct the NN
 n_features = X_train.shape[1]
-# l_input = keras.layers.Input(shape=(n_features))
-# l_hidden = keras.layers.Dense(
-#     761,
-#     activation="linear",
-#     kernel_regularizer=l2(0.1),
-#     bias_regularizer=l2(0.1),
-#     kernel_initializer=kernel_initialiser_input,
-#     bias_initializer=bias_initialiser_input,
-# )(l_input)
-# l_hidden = keras.layers.Dense(
-#     761,
-#     activation="relu",
-#     kernel_regularizer=l2(0.1),
-#     bias_regularizer=l2(0.1),
-#     kernel_initializer=kernel_initialiser,
-#     bias_initializer=bias_initialiser,
-# )(l_hidden)
-# l_output = keras.layers.Dense(
-#     1,
-#     activation="relu",
-#     kernel_regularizer=l2(0.1),
-#     bias_regularizer=l2(0.1),
-#     kernel_initializer=kernel_initialiser,
-#     bias_initializer=bias_initialiser,
-# )(l_hidden)
 
-model = keras.Sequential()
+l_input = keras.layers.Input(shape=(n_features))
+l_hidden = keras.layers.Dense(
+    761,
+    activation="relu",
+    kernel_regularizer=l2(0.1),
+    bias_regularizer=l2(0.1),
+    kernel_initializer=kernel_initialiser_input,
+    bias_initializer=bias_initialiser_input,
+)(l_input)
+l_hidden = keras.layers.Dense(
+    761,
+    activation="relu",
+    kernel_regularizer=l2(0.1),
+    bias_regularizer=l2(0.1),
+    kernel_initializer=kernel_initialiser,
+    bias_initializer=bias_initialiser,
+)(l_hidden)
+l_output = keras.layers.Dense(
+    1,
+    activation="linear",
+    kernel_regularizer=l2(0.1),
+    bias_regularizer=l2(0.1),
+    kernel_initializer=kernel_initialiser,
+    bias_initializer=bias_initialiser,
+)(l_hidden)
 
-model.add(keras.layers.Dense(761, \
-                input_dim=n_features, \
-                activation="relu", \
-                kernel_initializer=kernel_initialiser_input, \
-                bias_initializer=bias_initialiser_input, \
-                kernel_regularizer=l2(0.1), \
-                bias_regularizer=l2(0.1), \
-                name='layer1'))
-
-#model.add(Dropout(0.2))
-
-model.add(keras.layers.Dense(761, \
-                activation="relu", \
-                kernel_initializer=kernel_initialiser, \
-                bias_initializer=bias_initialiser, \
-                kernel_regularizer=l2(0.1), \
-                bias_regularizer=l2(0.1), \
-                name='layer2'))
-
-#model.add(Dropout(0.2))
-
-model.add(keras.layers.Dense(1, \
-                activation="linear", \
-                kernel_initializer=kernel_initialiser, \
-                bias_initializer=bias_initialiser, \
-                kernel_regularizer=l2(0.1), \
-                bias_regularizer=l2(0.1), \
-                name='layer3'))
-
-
-
-# model = keras.Model(inputs=l_input, outputs=l_output)
+model = keras.Model(inputs=l_input, outputs=l_output)
 
 print("Defined model")
 print(model.summary())
