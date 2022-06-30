@@ -19,6 +19,9 @@ def get_tensorboard_callback(log_root: Path = Path("logs/")):
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
     return keras.callbacks.TensorBoard(log_dir=str(log_root / time_str))
 
+def minmax_scale(x: np.ndarray()) -> np.ndarray():
+    return (x - x.min()) / (x.max() - x.min())
+
 
 # Define save locations
 basepath = Path("static_data/NN_rewrite/")
@@ -85,6 +88,12 @@ for formula in X_dict:
         train_items += zip(s_train, e_train)
         test_items += zip(s_test, e_test)
 
+gpus = tf.config.list_logical_devices('GPU')
+strategy = tf.distribute.MirroredStrategy(gpus)
+# with strategy.scope():
+scope = strategy.scope()
+scope.__enter__()
+
 # Create the train set
 train_features, train_labels = zip(*train_items)
 X_train = np.array(train_features)
@@ -96,7 +105,7 @@ X_test = np.array(test_features)
 y_test = np.array(test_labels)
 
 # Rescale the features such that they have variance 0
-# Pretty sure there is a bug in the original code where they forgot to scale the mean to zero aswell...
+# Note they do not scale the mean to zero, only the variation about the mean to 1
 def rescale(x: np.ndarray) -> np.ndarray:
     # return (x - x.mean()) / x.std()
     return x / x.std()
@@ -172,6 +181,8 @@ history = model.fit(
         get_tensorboard_callback(tensorboard_output),
     ],
 )
+
+scope.__exit__()
 
 # Save model
 model.save(model_output)
