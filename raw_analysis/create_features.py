@@ -35,9 +35,6 @@ from create_features_config import (
     XHbondkdewidth,
     anglekdewidth,
     bondkdewidth,
-    learning_rate,
-    decay_rate,
-    batch_size
 )
 from Database import GDB9molecule
 
