@@ -23,7 +23,7 @@ def get_tensorboard_callback(log_root: Path = Path("logs/")):
     return keras.callbacks.TensorBoard(log_dir=str(log_root / time_str))
 
 
-def minmax_scale(x: np.ndarray()) -> np.ndarray():
+def minmax_scale(x: np.ndarray) -> np.ndarray:
     return (x - x.min()) / (x.max() - x.min())
 
 
