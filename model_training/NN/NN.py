@@ -10,6 +10,9 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 
+import wandb
+from wandb.keras import WandbCallback
+
 
 from datetime import datetime
 
@@ -18,6 +21,7 @@ def get_tensorboard_callback(log_root: Path = Path("logs/")):
     now = datetime.now()
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
     return keras.callbacks.TensorBoard(log_dir=str(log_root / time_str))
+
 
 def minmax_scale(x: np.ndarray()) -> np.ndarray():
     return (x - x.min()) / (x.max() - x.min())
@@ -42,6 +46,7 @@ lr = 1e-5
 decay_rate = 3e-5
 batch_size = 64
 epochs = 7000
+regularization_degree = 0.1
 
 atom_order = ["C", "H", "N", "O"]
 
@@ -99,7 +104,7 @@ for formula in X_dict:
         train_items += zip(s_train, e_train)
         test_items += zip(s_test, e_test)
 
-gpus = tf.config.list_logical_devices('GPU')
+gpus = tf.config.list_logical_devices("GPU")
 strategy = tf.distribute.MirroredStrategy(gpus)
 # with strategy.scope():
 scope = strategy.scope()
@@ -163,24 +168,24 @@ l_input = keras.layers.Input(shape=(n_features))
 l_hidden = keras.layers.Dense(
     761,
     activation="relu",
-    kernel_regularizer=l2(0.1),
-    bias_regularizer=l2(0.1),
+    kernel_regularizer=l2(regularization_degree),
+    bias_regularizer=l2(regularization_degree),
     kernel_initializer=kernel_initialiser_input,
     bias_initializer=bias_initialiser_input,
 )(l_input)
 l_hidden = keras.layers.Dense(
     761,
     activation="relu",
-    kernel_regularizer=l2(0.1),
-    bias_regularizer=l2(0.1),
+    kernel_regularizer=l2(regularization_degree),
+    bias_regularizer=l2(regularization_degree),
     kernel_initializer=kernel_initialiser,
     bias_initializer=bias_initialiser,
 )(l_hidden)
 l_output = keras.layers.Dense(
     1,
     activation="linear",
-    kernel_regularizer=l2(0.1),
-    bias_regularizer=l2(0.1),
+    kernel_regularizer=l2(regularization_degree),
+    bias_regularizer=l2(regularization_degree),
     kernel_initializer=kernel_initialiser,
     bias_initializer=bias_initialiser,
 )(l_hidden)
@@ -190,15 +195,34 @@ model = keras.Model(inputs=l_input, outputs=l_output)
 print("Defined model")
 print(model.summary())
 
+optimizer = keras.optimizers.Adam(learning_rate=lr)
+loss_function = keras.losses.MeanSquaredError()
+
 model.compile(
-    optimizer=keras.optimizers.Adam(learning_rate=lr),
-    loss="mean_squared_error",
-    metrics=["mean_squared_error", "mean_absolute_error"],
+    optimizer=optimizer,
+    loss=loss_function,
+    metrics=[keras.metrics.MeanSquaredError(), tf.keras.metrics.MeanAbsoluteError()],
 )
 print("Compiled model")
 
+###################################################
+# Weights and Biases setup                        #
+###################################################
+
+wandb.config = {
+    "learning_rate": lr,
+    "epochs": epochs,
+    "batch_size": batch_size,
+    "loss_function": loss_function.name,
+    "optimizer": optimizer._name,
+    "regularization": regularization_degree
+}
+
+###################################################
+# Fit the model                                   #
+###################################################
+
 # Train
-# TODO #6 implement wandb monitoring
 history = model.fit(
     train_ds,
     validation_data=test_ds,
@@ -213,6 +237,7 @@ history = model.fit(
             save_weights_only=True,
         ),
         get_tensorboard_callback(tensorboard_output),
+        WandbCallback(),
     ],
 )
 
