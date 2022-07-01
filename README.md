@@ -16,7 +16,7 @@ Working repository for modifications to the work done in https://github.com/sanh
   - `clean_database.py` removes specific subsets of molecules based on calculated properties.
   - `create_features.py` calculates historgams and creates the vector representation.
 - `model_training/` has the code for training models with the different configurations and experimental parameters. It references several files which correspond to modifications of the dataset, either in the cleaning or feature creation stages.
-- `raw_analysis` is the code for taking the Gaussian16 output files for each molecule (one file for initial geometry, one for calculated geometry and energy, one for thermodynamic quantities) and parsing them into representation which is used by `feature_generation`. This is a really really inefficient process, and will probably be modified to keep only the relevant properties of each molecule saved as numeric or binary data.
+- `raw_analysis` is the code for taking the Gaussian16 output files for each molecule (one file for initial geometry, one for calculated geometry and energy, one for thermodynamic quantities) and parsing them into representation which is used by `feature_generation`.
 
 ## Requirements
 
@@ -33,5 +33,5 @@ The base neural network will take $\approx 2\ \text{hours}$.
 The only differnce between `NN` and `NN2` is the number of layers in the defined model. The code is identical.
 
 ## Kernel Ridge Regression models
-Some of the `model_training/KRR` experiments fail, and this seems to be due to an address boundary error in `sklearn`. Exits with `SIGSEV: Address boundary error`. Also, half of the files save a fitted kernel and the other half load fitted kernels and there is NO NAMING CONVENTION to help out distinguishing the two. I have removed all but one of the files, since they are all basically the same anyway.
+Some of the `model_training/KRR` experiments fail, and this seems to be due an error integrating the precomputed kernel with `sklearn`. Exits with `SIGSEV: Address boundary error`. Also, half of the files save a fitted kernel and the other half load fitted kernels. I have removed all duplicate files, as well as the testing files.
 
