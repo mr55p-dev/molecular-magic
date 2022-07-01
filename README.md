@@ -1,6 +1,14 @@
 # Molecular Magic
 
 Working repository for modifications to the work done in https://github.com/sanha0213/MolE8
+****
+## Setup
+- Run `conda env install -f environment.yml` to setup the environment.
+- Run `conda activate molemagic` to setup the correct python binary
+- Run `python3 raw_analysis/clean_database.py` to generate a cleaned database object
+- Run `python3 raw_analysis/create_features.py` to generate feature matricese
+- Run `python3 model_training/NN/NN.py` to run the neural network code (refactored by @mr55p-dev)
+- Run `python3 model_training/NN/NN_original.py` to run the neural network code (original implementation from MolE8)
 
 ## Structure
 
@@ -26,3 +34,4 @@ The only differnce between `NN` and `NN2` is the number of layers in the defined
 
 ## Kernel Ridge Regression models
 Some of the `model_training/KRR` experiments fail, and this seems to be due to an address boundary error in `sklearn`. Exits with `SIGSEV: Address boundary error`. Also, half of the files save a fitted kernel and the other half load fitted kernels and there is NO NAMING CONVENTION to help out distinguishing the two. I have removed all but one of the files, since they are all basically the same anyway.
+

@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 data_basepath = Path("./static_data/")
-molecule_list_path = data_basepath / "unfiltered_database" / "GDB_allgroundnoimagnocarban_Dec2021_G298_LongBondLimit1.6.pkl"
+molecule_list_path = "GDB_allgroundnoimagnocarban_Dec2021_G298_LongBondLimit1.6.pkl"
 output_basepath = data_basepath / "clean_database_output"
 
 MaxAtoms = 8
