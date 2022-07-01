@@ -1,7 +1,18 @@
 name: molemagic
 dependencies:
   - python=3.9
+  - pip
+  - tensorflow==2.9
+  - openbabel==3.1.1
   - pip:
-  
-    - tensorflow==2.9
-prefix: /opt/homebrew/Caskroom/miniforge/base/envs/molemagic
+    - matplotlib==3.5.2
+    - numpy==1.21.2
+    - pandas==1.4.1
+    - Pillow==9.1.1
+    - plotly==5.8.2
+    - psutil==5.8.0
+    - PyOpenGL==3.1.6
+    - PyQt5==5.15.7
+    - scikit_learn==1.1.1
+    - scipy==1.8.1
+    - wandb==0.12.11

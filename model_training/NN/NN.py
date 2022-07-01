@@ -10,6 +10,9 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 
+import wandb
+from wandb.keras import WandbCallback
+
 
 from datetime import datetime
 
@@ -20,6 +23,14 @@ def get_tensorboard_callback(log_root: Path = Path("logs/")):
     return keras.callbacks.TensorBoard(log_dir=str(log_root / time_str))
 
 
+def minmax_scale(x: np.ndarray) -> np.ndarray:
+    return (x - x.min()) / (x.max() - x.min())
+
+
+###################################################
+# Parameter setup                                 #
+###################################################
+
 # Define save locations
 basepath = Path("static_data/NN_rewrite/")
 basepath.mkdir(parents=True, exist_ok=True)
@@ -29,16 +40,25 @@ model_output = basepath / "model"
 tensorboard_output = basepath / "tb_log"
 metric_output = basepath / "metrics.csv"
 
+random_seed = 50
+tf.random.set_seed(random_seed)
+
 # Define parameters
-seed = 50
+gpus = tf.config.list_logical_devices("GPU")
 lr = 1e-5
 decay_rate = 3e-5
 batch_size = 64
 epochs = 7000
+regularization_degree = 0.1
 
 atom_order = ["C", "H", "N", "O"]
 
-# Load data
+
+###################################################
+# Load and transform the data                     #
+###################################################
+
+# Load the data
 data_basepath = Path("static_data/create_features_output/data")
 X = np.load(data_basepath / "features.npy", allow_pickle=True)
 y = np.load(data_basepath / "labels.npy", allow_pickle=True)
@@ -54,16 +74,18 @@ atom_vector = (X[:, -15:-11] / 100).astype("int")
 molecular_formulae = list(map(create_mol_formula, atom_vector))
 unique_molecular_formulae = set(molecular_formulae)
 
+# Group by formula
 X_dict = defaultdict(list)
 y_dict = defaultdict(list)
 for form, vec, target in zip(molecular_formulae, X, y):
     X_dict[form].append(vec)
     y_dict[form].append(target)
 
+# Put this back into a standard dictionary
 X_dict = dict(**X_dict)
 y_dict = dict(**y_dict)
 
-# Split the data into train and test set based on the rules:
+# Split the data into train and test set
 dropped_structures = []
 train_items = []
 test_items = []
@@ -80,10 +102,15 @@ for formula in X_dict:
         test_items.append((test_candidate, test_energy))
     else:
         s_train, s_test, e_train, e_test = train_test_split(
-            candidates, y_dict[formula], test_size=0.33, random_state=50
+            candidates, y_dict[formula], test_size=0.33, random_state=random_seed
         )
         train_items += zip(s_train, e_train)
         test_items += zip(s_test, e_test)
+
+strategy = tf.distribute.MirroredStrategy(gpus)
+# with strategy.scope():
+scope = strategy.scope()
+scope.__enter__()
 
 # Create the train set
 train_features, train_labels = zip(*train_items)
@@ -96,7 +123,7 @@ X_test = np.array(test_features)
 y_test = np.array(test_labels)
 
 # Rescale the features such that they have variance 0
-# Pretty sure there is a bug in the original code where they forgot to scale the mean to zero aswell...
+# Note they do not scale the mean to zero, only the variation about the mean to 1
 def rescale(x: np.ndarray) -> np.ndarray:
     # return (x - x.mean()) / x.std()
     return x / x.std()
@@ -104,6 +131,30 @@ def rescale(x: np.ndarray) -> np.ndarray:
 
 X_train_norm = X_train / X_train.std()
 X_test_norm = X_test / X_train.std()
+
+# Create tf.data.Dataset
+train_ds = (
+    tf.data.Dataset.from_tensor_slices(
+        (
+            tf.convert_to_tensor(X_train_norm, dtype=tf.float32),
+            tf.convert_to_tensor(y_train, dtype=tf.float32),
+        )
+    )
+    .batch(batch_size=batch_size)
+    .cache()
+    .prefetch(tf.data.AUTOTUNE)
+)
+test_ds = (
+    tf.data.Dataset.from_tensor_slices(
+        (
+            tf.convert_to_tensor(X_test_norm, dtype=tf.float32),
+            tf.convert_to_tensor(y_test, dtype=tf.float32),
+        )
+    )
+    .batch(batch_size=batch_size)
+    .cache()
+    .prefetch(tf.data.AUTOTUNE)
+)
 
 # Define the weight and bias initializers
 kernel_initialiser = keras.initializers.RandomUniform(minval=-500, maxval=100)
@@ -119,24 +170,24 @@ l_input = keras.layers.Input(shape=(n_features))
 l_hidden = keras.layers.Dense(
     761,
     activation="relu",
-    kernel_regularizer=l2(0.1),
-    bias_regularizer=l2(0.1),
+    kernel_regularizer=l2(regularization_degree),
+    bias_regularizer=l2(regularization_degree),
     kernel_initializer=kernel_initialiser_input,
     bias_initializer=bias_initialiser_input,
 )(l_input)
 l_hidden = keras.layers.Dense(
     761,
     activation="relu",
-    kernel_regularizer=l2(0.1),
-    bias_regularizer=l2(0.1),
+    kernel_regularizer=l2(regularization_degree),
+    bias_regularizer=l2(regularization_degree),
     kernel_initializer=kernel_initialiser,
     bias_initializer=bias_initialiser,
 )(l_hidden)
 l_output = keras.layers.Dense(
     1,
     activation="linear",
-    kernel_regularizer=l2(0.1),
-    bias_regularizer=l2(0.1),
+    kernel_regularizer=l2(regularization_degree),
+    bias_regularizer=l2(regularization_degree),
     kernel_initializer=kernel_initialiser,
     bias_initializer=bias_initialiser,
 )(l_hidden)
@@ -146,19 +197,39 @@ model = keras.Model(inputs=l_input, outputs=l_output)
 print("Defined model")
 print(model.summary())
 
+optimizer = keras.optimizers.Adam(learning_rate=lr)
+loss_function = keras.losses.MeanSquaredError()
+
 model.compile(
-    optimizer=keras.optimizers.Adam(learning_rate=lr),
-    loss="mean_squared_error",
-    metrics=["mean_squared_error", "mean_absolute_error"],
+    optimizer=optimizer,
+    loss=loss_function,
+    metrics=[keras.metrics.MeanSquaredError(), tf.keras.metrics.MeanAbsoluteError()],
 )
 print("Compiled model")
 
+###################################################
+# Weights and Biases setup                        #
+###################################################
+
+
+wandb.init(project="MolecularMagic", entity="molecular-magicians")
+wandb.config = {
+    "learning_rate": lr,
+    "epochs": epochs,
+    "batch_size": batch_size,
+    "loss_function": loss_function.name,
+    "optimizer": optimizer._name,
+    "regularization": regularization_degree,
+}
+
+###################################################
+# Fit the model                                   #
+###################################################
+
 # Train
-# TODO #6 implement wandb monitoring
 history = model.fit(
-    X_train_norm,
-    y_train,
-    validation_data=(X_test_norm, y_test),
+    train_ds,
+    validation_data=test_ds,
     epochs=epochs,
     batch_size=batch_size,
     callbacks=[
@@ -170,8 +241,11 @@ history = model.fit(
             save_weights_only=True,
         ),
         get_tensorboard_callback(tensorboard_output),
+        WandbCallback(),
     ],
 )
+
+scope.__exit__()
 
 # Save model
 model.save(model_output)
