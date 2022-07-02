@@ -19,3 +19,5 @@ dependencies:
     - scikit_learn==1.1.1
     - scipy==1.8.1
     - wandb==0.12.11
+    - tensorboard
+    - keras-tuner
