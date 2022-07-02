@@ -4,9 +4,13 @@ Working repository for modifications to the work done in https://github.com/sanh
 ****
 ## Setup
 - Run `conda env install -f environment.yml` to setup the environment.
-- Run `conda activate molemagic` to setup the correct python binary
+- Run `conda activate molemagic` to activate the environment.
+- Install Git LFS (https://git-lfs.github.com/) and run the following commands in the local git folder:
+  - git lfs install
+  - git lfs fetch
+  - git lfs pull
 - Run `python3 raw_analysis/clean_database.py` to generate a cleaned database object
-- Run `python3 raw_analysis/create_features.py` to generate feature matricese
+- Run `python3 raw_analysis/create_features.py` to generate the feature matrices
 - Run `python3 model_training/NN/NN.py` to run the neural network code (refactored by @mr55p-dev)
 - Run `python3 model_training/NN/NN_original.py` to run the neural network code (original implementation from MolE8)
 

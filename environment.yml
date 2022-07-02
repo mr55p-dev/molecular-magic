@@ -1,9 +1,12 @@
 name: molemagic
+channels:
+  - conda-forge
 dependencies:
   - python=3.9
   - pip
-  - tensorflow==2.9
-  - openbabel==3.1.1
+  - tensorflow
+  - openbabel
+  - rdkit
   - pip:
     - matplotlib==3.5.2
     - numpy==1.21.2
