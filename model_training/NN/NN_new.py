@@ -3,7 +3,7 @@ Reimplementation of `NN_custom_split.py`
 """
 
 ###################################################
-# Imports and initialisation                   #
+# Imports and initialisation                      #
 ###################################################
 
 # import wandb
@@ -119,6 +119,7 @@ model_checkpoints_output = basepath / "model_checkpoint"
 model_output = basepath / "model"
 tensorboard_output = basepath / "tb_log"
 metric_output = basepath / "metrics.csv"
+tuner_output = basepath / "tuner_checkpoint"
 
 
 
@@ -169,8 +170,8 @@ def model_builder(hp):
 
     l_input = keras.layers.Input(shape=(X_train.shape[1]))
     l_hidden = keras.layers.Dense(
-        # units=hp.Choice("l1_dims", [700, 800]), #761
-        761,
+        units=hp.Choice("l1_dims", [700, 800]), #761
+        # 761,
         activation="relu",
         kernel_regularizer=l2(regularization_degree),
         bias_regularizer=l2(regularization_degree),
@@ -239,13 +240,22 @@ def get_tensorboard_callback(log_root: Path = Path("logs/")):
 
 # Train
 tuner = kt.RandomSearch(
-    model_builder,
+    hypermodel=model_builder,
     objective='val_loss',
+    overwrite=True,
+    executions_per_trial=1,
+    directory=tuner_output,
+    # project_name='molNNtesting',
+    seed=random_seed
 )
 
-tuner.search(train_ds,
+tuner.search(
+    train_ds,
+    steps_per_epoch=100,
     validation_data=test_ds,
+    validation_steps=50,
     epochs=20, #epochs
+    verbose=1,
     batch_size=batch_size,
     callbacks=[
         # keras.callbacks.ModelCheckpoint(
@@ -281,8 +291,8 @@ tuner.search(train_ds,
 # scope.__exit__()
 
 # Save model
-model = tuner.get_best_models(num_models=1)[0]
-model.save(model_output)
+# model = tuner.get_best_models(num_models=1)[0]
+# model.save(model_output)
 
 # Save output
 # hist = history.history
