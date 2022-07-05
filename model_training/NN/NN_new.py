@@ -170,7 +170,7 @@ def model_builder(hp):
 
     l_input = keras.layers.Input(shape=(X_train.shape[1]))
     l_hidden = keras.layers.Dense(
-        units=hp.Choice("l1_dims", [700, 800]), #761
+        units=hp.Choice("l1_dims", [128, 256]), #761
         # 761,
         activation="relu",
         kernel_regularizer=l2(regularization_degree),
@@ -179,8 +179,8 @@ def model_builder(hp):
         bias_initializer=bias_initialiser_input,
     )(l_input)
     l_hidden = keras.layers.Dense(
-        # units=hp.Choice("l2_dims", [700, 800]), #761
-        761,
+        units=hp.Choice("l2_dims", [128, 256]), #761
+        # 761,
         activation="relu",
         kernel_regularizer=l2(regularization_degree),
         bias_regularizer=l2(regularization_degree),
@@ -202,12 +202,9 @@ def model_builder(hp):
     print("Defined model")
     print(model.summary())
 
-    optimizer = keras.optimizers.Adam(learning_rate=lr)
-    loss_function = keras.losses.MeanSquaredError()
-
     model.compile(
-        optimizer=optimizer,
-        loss=loss_function,
+        optimizer = keras.optimizers.Adam(learning_rate=lr),
+        loss = keras.losses.MeanSquaredError(),
         metrics=['mse', 'mae'],
     )
     print("Compiled model")
@@ -233,10 +230,14 @@ def model_builder(hp):
 ###################################################
 # Fit the model                                   #
 ###################################################
-def get_tensorboard_callback(log_root: Path = Path("logs/")):
+def generate_datetime():
     now = datetime.now()
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
-    return keras.callbacks.TensorBoard(log_dir=str(log_root / time_str))
+    return time_str
+
+datetime = generate_datetime()
+exp_name = str(datetime + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
+
 
 # Train
 tuner = kt.RandomSearch(
@@ -245,16 +246,16 @@ tuner = kt.RandomSearch(
     overwrite=True,
     executions_per_trial=1,
     directory=tuner_output,
-    # project_name='molNNtesting',
+    project_name=exp_name,
     seed=random_seed
 )
 
 tuner.search(
     train_ds,
-    steps_per_epoch=100,
+    # steps_per_epoch=500,
     validation_data=test_ds,
-    validation_steps=50,
-    epochs=20, #epochs
+    # validation_steps=300,
+    epochs=60, #epochs
     verbose=1,
     batch_size=batch_size,
     callbacks=[
@@ -265,7 +266,7 @@ tuner.search(
         #     save_best_only=True,
         #     save_weights_only=True,
         # ),
-        get_tensorboard_callback(tensorboard_output)
+        keras.callbacks.TensorBoard(tensorboard_output / exp_name)
         # WandbCallback(),
     ],
 )
