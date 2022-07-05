@@ -125,11 +125,25 @@ tuner_output = basepath / "tuner_checkpoint"
 
 # Define parameters
 
-lr = 1e-5
-decay_rate = 3e-5
+# lr = 1e-5
+
+lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate = 1e-2,
+        decay_steps=443*20, # STEPS != EPOCHS. At batch size 64, there are 443*100 steps per epoch
+        decay_rate=0.25,
+        staircase=True)
+
+# lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+#     initial_learning_rate = 1e-4,
+#     decay_steps=100,
+#     decay_rate=0.90,
+#     staircase=True)
+
 batch_size = 64
-epochs = 7000
+epochs = 500
+
 regularization_degree = 0.1
+# decay_rate = 3e-5
 
 
 # Create tf.data.Dataset
@@ -159,41 +173,69 @@ test_ds = (
 def model_builder(hp):
 
     # Define the weight and bias initializers
-    kernel_initialiser = keras.initializers.RandomUniform(minval=-500, maxval=100)
-    kernel_initialiser_input = keras.initializers.RandomUniform(minval=0, maxval=0.1)
+    # kernel_initialiser = keras.initializers.RandomUniform(minval=-500, maxval=100)
+    # kernel_initialiser_input = keras.initializers.RandomUniform(minval=0, maxval=0.1)
 
-    bias_initialiser = keras.initializers.RandomUniform(minval=0, maxval=10)
-    bias_initialiser_input = keras.initializers.RandomUniform(minval=0, maxval=0.01)
+    # bias_initialiser = keras.initializers.RandomUniform(minval=0, maxval=10)
+    # bias_initialiser_input = keras.initializers.RandomUniform(minval=0, maxval=0.01)
 
     # Construct the NN
     # n_features = X_train.shape[1]
-
+    # if hp.Boolean("cust_init"):
+    #     l_input = keras.layers.Input(shape=(X_train.shape[1]))
+    #     l_hidden = keras.layers.Dense(
+    #         units=hp.Choice("l1_dims", [128]), #761
+    #         # 761,
+    #         activation="relu",
+    #         kernel_regularizer=l2(regularization_degree),
+    #         bias_regularizer=l2(regularization_degree),
+    #         kernel_initializer=kernel_initialiser_input,
+    #         bias_initializer=bias_initialiser_input,
+    #     )(l_input)
+    #     l_hidden = keras.layers.Dense(
+    #         units=hp.Choice("l2_dims", [128]), #761
+    #         # 761,
+    #         activation="relu",
+    #         kernel_regularizer=l2(regularization_degree),
+    #         bias_regularizer=l2(regularization_degree),
+    #         kernel_initializer=kernel_initialiser,
+    #         bias_initializer=bias_initialiser,
+    #     )(l_hidden)
+    #     l_output = keras.layers.Dense(
+    #         1,
+    #         activation="linear",
+    #         kernel_regularizer=l2(regularization_degree),
+    #         bias_regularizer=l2(regularization_degree),
+    #         kernel_initializer=kernel_initialiser,
+    #         bias_initializer=bias_initialiser,
+    #     )(l_hidden)
+    # else:
     l_input = keras.layers.Input(shape=(X_train.shape[1]))
     l_hidden = keras.layers.Dense(
-        units=hp.Choice("l1_dims", [128, 256]), #761
+        units=hp.Choice("l1_dims", [128]), #761
         # 761,
         activation="relu",
-        kernel_regularizer=l2(regularization_degree),
-        bias_regularizer=l2(regularization_degree),
-        kernel_initializer=kernel_initialiser_input,
-        bias_initializer=bias_initialiser_input,
+        # kernel_regularizer=l2(regularization_degree),
+        # bias_regularizer=l2(regularization_degree),
+        # kernel_initializer=kernel_initialiser_input,
+        # bias_initializer=bias_initialiser_input,
     )(l_input)
     l_hidden = keras.layers.Dense(
-        units=hp.Choice("l2_dims", [128, 256]), #761
+        units=hp.Choice("l2_dims", [128]), #761
         # 761,
         activation="relu",
-        kernel_regularizer=l2(regularization_degree),
-        bias_regularizer=l2(regularization_degree),
-        kernel_initializer=kernel_initialiser,
-        bias_initializer=bias_initialiser,
+        # kernel_regularizer=l2(regularization_degree),
+        # bias_regularizer=l2(regularization_degree),
+        # kernel_initializer=kernel_initialiser,
+        # bias_initializer=bias_initialiser,
     )(l_hidden)
     l_output = keras.layers.Dense(
         1,
         activation="linear",
-        kernel_regularizer=l2(regularization_degree),
-        bias_regularizer=l2(regularization_degree),
-        kernel_initializer=kernel_initialiser,
-        bias_initializer=bias_initialiser,
+        # kernel_regularizer=l2(regularization_degree),
+        # bias_regularizer=l2(regularization_degree),
+        # kernel_initializer=kernel_initialiser,
+        # bias_initializer=bias_initialiser,
     )(l_hidden)
 
     
@@ -203,7 +245,7 @@ def model_builder(hp):
     print(model.summary())
 
     model.compile(
-        optimizer = keras.optimizers.Adam(learning_rate=lr),
+        optimizer = keras.optimizers.Adam(learning_rate=lr_schedule),
         loss = keras.losses.MeanSquaredError(),
         metrics=['mse', 'mae'],
     )
@@ -230,20 +272,20 @@ def model_builder(hp):
 ###################################################
 # Fit the model                                   #
 ###################################################
-def generate_datetime():
+def generate_experiment_name(epochs, batch_size):
     now = datetime.now()
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
-    return time_str
+    return str(time_str + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
 
-datetime = generate_datetime()
-exp_name = str(datetime + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
+exp_name = generate_experiment_name(epochs, batch_size)
+exp_name += "_decaylr"
 
 
 # Train
 tuner = kt.RandomSearch(
     hypermodel=model_builder,
     objective='val_loss',
-    overwrite=True,
+    # overwrite=True,
     executions_per_trial=1,
     directory=tuner_output,
     project_name=exp_name,
@@ -255,7 +297,7 @@ tuner.search(
     # steps_per_epoch=500,
     validation_data=test_ds,
     # validation_steps=300,
-    epochs=60, #epochs
+    epochs=epochs, #epochs
     verbose=1,
     batch_size=batch_size,
     callbacks=[
