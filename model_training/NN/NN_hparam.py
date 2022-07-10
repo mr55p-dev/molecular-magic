@@ -9,8 +9,6 @@ Reimplementation of `NN_custom_split.py`
 import wandb
 
 import numpy as np
-import keras_tuner as kt
-import pandas as pd
 import tensorflow as tf
 import optuna as op
 
@@ -175,18 +173,6 @@ def objective(trial: op.Trial):
         )(prev_layer)
         prev_layer = l_hidden
 
-    # for i in range(hp.Int("num_layers", 1, 3)):
-    #     if i == 0:
-    #         l_hidden = keras.layers.Dense(
-    #             units=hp.Choice("l0_dims", [128, 512, 1024]),  # 761
-    #             activation="relu",
-    #         )(l_input)
-    #     else:
-    #         l_hidden = keras.layers.Dense(
-    #             units=hp.Choice(f"l{i}_dims", [128, 512, 1024]),  # 761
-    #             activation="relu",
-    #         )(l_hidden)
-    # Might need to manually set dims to 0 if not used. This seems like the right approach...
     # Test different activation functions
     # Test dropout
     l_output = keras.layers.Dense(
@@ -209,33 +195,40 @@ def objective(trial: op.Trial):
     )
     print("Compiled model")
 
+    # Configure the weights and biases experiment
+    wandb_config = dict(
+        **{
+            "trial_number": trial.number,
+            "learning_rate": "20,40,600,900,990 st 1e-2",
+            "batch_size": batch_size,
+            "n_layers": trial.params["num_layers"],
+        },
+        **trial.params,
+    )  # Automatically includes the parameters we are using
+    wandb.init(
+        project="MolecularMagic",
+        entity="molecular-magicians",
+        group=exp_name,
+        config=wandb_config,
+    )
+
+    # Fit the model
     hist = model.fit(
         train_ds,
         validation_data=test_ds,
-        callbacks=[op.integration.TFKerasPruningCallback(trial, "val_loss")],
+        callbacks=[
+            op.integration.TFKerasPruningCallback(trial, "val_loss"),
+            WandbCallback(monitor="val_loss"),
+        ],
         batch_size=batch_size,
         epochs=epochs,
     )
 
-    return hist.history["val_loss"][-1] # Return the end validation loss
+    # Mark the experiment as ended
+    wandb.finish(quiet=True)
 
+    return hist.history["val_loss"][-1]  # Return the end validation loss
 
-###################################################
-# Weights and Biases setup                        #
-###################################################
-
-# wandb.init(project="MolecularMagic", entity="molecular-magicians")
-# wandb.config = {
-#     "learning_rate": "20,40,600,900,990 st 1e-2",
-#     "epochs": epochs,
-#     "batch_size": batch_size,
-#     "num_layers": num_layers,
-#     "l0_dims": l0_dims,
-#     "l1_dims": l1_dims,
-#     "l2_dims": l2_dims,
-#     "l2_dims": l3_dims
-#     # "regularization": regularization_degree,
-# }
 
 ###################################################
 # Fit the model                                   #
@@ -253,9 +246,6 @@ exp_name += "_decaylr"
 # stop_callback = EarlyStopping(
 #     monitor='loss', patience=1, verbose=0, mode='auto')
 
-# Define tensorboard callback
-# tensorboard_callback = keras.callbacks.TensorBoard(tensorboard_output/exp_name),
-
 # Define model checkpoint callback
 # model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
 #     filepath=model_checkpoints_output,
@@ -265,12 +255,17 @@ exp_name += "_decaylr"
 #     save_weights_only=True,
 # ),
 
-# storage = op.storages.InMemoryStorage()
-storage = op.storages.RedisStorage(
-    url="redis://localhost:6379/optuna",
-)
+# Setup the hyperparmeter search
+# This is if you want to use optunas local optuna-dashboard system, which is pretty good
+# but not really as good as wandb
+# storage = op.storages.RedisStorage(
+#     url="redis://localhost:6379/optuna",
+# )
+storage = op.storages.InMemoryStorage()
 pruner = op.pruners.HyperbandPruner()
-sampler = op.samplers.RandomSampler(seed=42)
+sampler = op.samplers.RandomSampler(
+    seed=42
+)  # There are some more options in optuna that work well
 
 study = op.create_study(
     study_name=exp_name,
@@ -280,33 +275,8 @@ study = op.create_study(
     direction="minimize",
 )
 
+# Run the optimization
 study.optimize(
     objective,
     n_trials=5,
 )
-
-
-# Tuner initialisation
-# tuner = kt.RandomSearch(
-#     hypermodel=model_builder,  # model_builder
-#     objective="val_loss",
-#     # overwrite=True,
-#     executions_per_trial=1,
-#     directory=tuner_output,
-#     project_name=exp_name,
-#     seed=random_seed,
-# )
-
-# # Tuner execution
-# tuner.search(
-#     train_ds,
-#     validation_data=test_ds,
-#     epochs=epochs,  # epochs
-#     verbose=1,
-#     batch_size=batch_size,
-#     callbacks=[
-#         keras.callbacks.TensorBoard(tensorboard_output / exp_name),
-#         # model_checkpoint_callback,
-#         # WandbCallback()
-#     ],
-# )
