@@ -219,7 +219,7 @@ def objective(trial: op.Trial):
         validation_data=test_ds,
         callbacks=[
             op.integration.TFKerasPruningCallback(trial, "val_loss"),
-            WandbCallback(monitor="val_loss"),
+            WandbCallback(monitor="val_loss", save_model=False, log_weights=True),
         ],
         batch_size=batch_size,
         epochs=epochs,
@@ -279,5 +279,5 @@ study = op.create_study(
 # Run the optimization
 study.optimize(
     objective,
-    n_trials=5,
+    n_trials=20,
 )
