@@ -206,6 +206,7 @@ def objective(trial: op.Trial):
         **trial.params,
     )  # Automatically includes the parameters we are using
     wandb.init(
+        reinit=True,
         project="MolecularMagic",
         entity="molecular-magicians",
         group=exp_name,
