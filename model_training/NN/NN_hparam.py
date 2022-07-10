@@ -12,7 +12,7 @@ import numpy as np
 import keras_tuner as kt
 import pandas as pd
 import tensorflow as tf
-from tensorboard.plugins.hparams import api as hp
+import optuna as op
 
 
 from collections import defaultdict
@@ -20,7 +20,6 @@ from pathlib import Path
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
-from tensorflow.keras.regularizers import l2
 from wandb.keras import WandbCallback
 
 random_seed = 50
@@ -44,6 +43,7 @@ def create_mol_formula(atom_vec) -> str:
     return "".join(
         map(lambda x: f"{x}{atom_vec[atom_order.index(x)]}", ["C", "N", "O", "H"])
     )
+
 
 atom_vector = (X[:, -15:-11] / 100).astype("int")
 molecular_formulae = list(map(create_mol_formula, atom_vector))
@@ -156,26 +156,36 @@ test_ds = (
 #     staircase=True)
 
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries = [443*20, 443*40, 443*600, 443*900, 443*990],
-    values = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7],
-    name=None
+    boundaries=[443 * 20, 443 * 40, 443 * 600, 443 * 900, 443 * 990],
+    values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7],
+    name=None,
 )
 
 # Build the model
-def model_builder(hp):
-    
+def objective(trial: op.Trial):
+
+    # Define model architecture
     l_input = keras.layers.Input(shape=(X_train.shape[1]))
-    for i in range(hp.Int("num_layers", 1, 3)):
-        if i == 0:
-            l_hidden = keras.layers.Dense(
-                units=hp.Choice("l0_dims", [128, 512, 1024]), #761
-                activation="relu",
-            )(l_input)
-        else:
-            l_hidden = keras.layers.Dense(
-                units=hp.Choice(f"l{i}_dims", [128, 512, 1024]), #761
-                activation="relu",
-            )(l_hidden)
+
+    prev_layer = l_input
+    for i in range(trial.suggest_int("num_layers", 1, 3)):
+        l_hidden = keras.layers.Dense(
+            units=trial.suggest_categorical(f"l{i}_dims", [128, 512, 1024]),
+            activation="relu",
+        )(prev_layer)
+        prev_layer = l_hidden
+
+    # for i in range(hp.Int("num_layers", 1, 3)):
+    #     if i == 0:
+    #         l_hidden = keras.layers.Dense(
+    #             units=hp.Choice("l0_dims", [128, 512, 1024]),  # 761
+    #             activation="relu",
+    #         )(l_input)
+    #     else:
+    #         l_hidden = keras.layers.Dense(
+    #             units=hp.Choice(f"l{i}_dims", [128, 512, 1024]),  # 761
+    #             activation="relu",
+    #         )(l_hidden)
     # Might need to manually set dims to 0 if not used. This seems like the right approach...
     # Test different activation functions
     # Test dropout
@@ -184,7 +194,6 @@ def model_builder(hp):
         activation="linear",
     )(l_hidden)
 
-    
     model = keras.Model(inputs=l_input, outputs=l_output)
 
     print("Defined model")
@@ -194,13 +203,21 @@ def model_builder(hp):
     loss_function = keras.losses.MeanSquaredError()
 
     model.compile(
-        optimizer = optimizer,
-        loss = loss_function,
-        metrics=['mse', 'mae'],
+        optimizer=optimizer,
+        loss=loss_function,
+        metrics=["mse", "mae"],
     )
     print("Compiled model")
 
-    return model
+    hist = model.fit(
+        train_ds,
+        validation_data=test_ds,
+        # callbacks=...,
+        batch_size=batch_size,
+        epochs=epochs,
+    )
+
+    return hist.history["val_loss"]
 
 
 ###################################################
@@ -228,6 +245,7 @@ def generate_experiment_name(epochs, batch_size):
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
     return str(time_str + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
 
+
 exp_name = generate_experiment_name(epochs, batch_size)
 exp_name += "_decaylr"
 
@@ -240,36 +258,47 @@ exp_name += "_decaylr"
 
 # Define model checkpoint callback
 # model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-    #     filepath=model_checkpoints_output,
-    #     monitor="val_mean_absolute_error",
-    #     mode="min",
-    #     save_best_only=True,
-    #     save_weights_only=True,
-    # ),
+#     filepath=model_checkpoints_output,
+#     monitor="val_mean_absolute_error",
+#     mode="min",
+#     save_best_only=True,
+#     save_weights_only=True,
+# ),
+
+storage = op.storages.InMemoryStorage()
+# pruner = op.pruners...
+sampler = op.samplers.RandomSampler(seed=42)
+
+study = op.create_study(
+    study_name=exp_name,
+    storag=storage,
+    sampler=sampler
+)
+
+study.optimize(objective, n_trials=..., )
+
 
 # Tuner initialisation
-tuner = kt.RandomSearch(
-    hypermodel=model_builder, #model_builder
-    objective='val_loss',
-    # overwrite=True,
-    executions_per_trial=1,
-    directory=tuner_output,
-    project_name=exp_name,
-    seed=random_seed
-)
+# tuner = kt.RandomSearch(
+#     hypermodel=model_builder,  # model_builder
+#     objective="val_loss",
+#     # overwrite=True,
+#     executions_per_trial=1,
+#     directory=tuner_output,
+#     project_name=exp_name,
+#     seed=random_seed,
+# )
 
-# Tuner execution
-tuner.search(
-    train_ds,
-    # steps_per_epoch=500,
-    validation_data=test_ds,
-    # validation_steps=300,
-    epochs=epochs, #epochs
-    verbose=1,
-    batch_size=batch_size,
-    callbacks=[
-        keras.callbacks.TensorBoard(tensorboard_output/exp_name),
-        # model_checkpoint_callback,
-        # WandbCallback()
-    ],
-)
+# # Tuner execution
+# tuner.search(
+#     train_ds,
+#     validation_data=test_ds,
+#     epochs=epochs,  # epochs
+#     verbose=1,
+#     batch_size=batch_size,
+#     callbacks=[
+#         keras.callbacks.TensorBoard(tensorboard_output / exp_name),
+#         # model_checkpoint_callback,
+#         # WandbCallback()
+#     ],
+# )
