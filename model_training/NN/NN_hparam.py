@@ -20,6 +20,7 @@ from pathlib import Path
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
+from tensorflow.keras import layers
 from tensorflow.keras.regularizers import l2
 from wandb.keras import WandbCallback
 
@@ -164,28 +165,16 @@ lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
 # Build the model
 def model_builder(hp):
     
-    l_input = keras.layers.Input(shape=(X_train.shape[1]))
+    model = keras.Sequential()
+    model.add(layers.Input(shape=(X_train.shape[1])))
     for i in range(hp.Int("num_layers", 1, 3)):
-        if i == 0:
-            l_hidden = keras.layers.Dense(
-                units=hp.Choice("l0_dims", [128, 512, 1024]), #761
-                activation="relu",
-            )(l_input)
-        else:
-            l_hidden = keras.layers.Dense(
-                units=hp.Choice(f"l{i}_dims", [128, 512, 1024]), #761
-                activation="relu",
-            )(l_hidden)
-    # Might need to manually set dims to 0 if not used. This seems like the right approach...
-    # Test different activation functions
-    # Test dropout
-    l_output = keras.layers.Dense(
-        1,
-        activation="linear",
-    )(l_hidden)
+        model.add(layers.Dense(
+            units=hp.Choice(f"layer_{i}_dims", [128, 512, 1024]),
+            activation="relu"))
+    model.add(layers.Dense(units=1, activation="linear"))
 
-    
-    model = keras.Model(inputs=l_input, outputs=l_output)
+    # Test different activation functions
+    # Test dropout layer...
 
     print("Defined model")
     print(model.summary())
