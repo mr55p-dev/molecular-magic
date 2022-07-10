@@ -212,7 +212,7 @@ def objective(trial: op.Trial):
     hist = model.fit(
         train_ds,
         validation_data=test_ds,
-        # callbacks=...,
+        callbacks=[op.integration.TFKerasPruningCallback(trial, "val_loss")],
         batch_size=batch_size,
         epochs=epochs,
     )
@@ -269,13 +269,12 @@ storage = op.storages.InMemoryStorage()
 # pruner = op.pruners...
 sampler = op.samplers.RandomSampler(seed=42)
 
-study = op.create_study(
-    study_name=exp_name,
-    storag=storage,
-    sampler=sampler
-)
+study = op.create_study(study_name=exp_name, storag=storage, sampler=sampler)
 
-study.optimize(objective, n_trials=..., )
+study.optimize(
+    objective,
+    n_trials=...,
+)
 
 
 # Tuner initialisation
