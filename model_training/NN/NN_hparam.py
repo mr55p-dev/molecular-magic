@@ -114,7 +114,7 @@ tuner_output = basepath / "tuner_checkpoint"
 
 # Define batch size and number of epochs
 batch_size = 64
-epochs = 1
+epochs = 5
 
 # Create tf.data.Dataset
 train_ds = (
@@ -217,7 +217,7 @@ def objective(trial: op.Trial):
         epochs=epochs,
     )
 
-    return hist.history["val_loss"]
+    return hist.history["val_loss"][-1] # Return the end validation loss
 
 
 ###################################################
@@ -265,15 +265,24 @@ exp_name += "_decaylr"
 #     save_weights_only=True,
 # ),
 
-storage = op.storages.InMemoryStorage()
-# pruner = op.pruners...
+# storage = op.storages.InMemoryStorage()
+storage = op.storages.RedisStorage(
+    url="redis://localhost:6379/optuna",
+)
+pruner = op.pruners.HyperbandPruner()
 sampler = op.samplers.RandomSampler(seed=42)
 
-study = op.create_study(study_name=exp_name, storag=storage, sampler=sampler)
+study = op.create_study(
+    study_name=exp_name,
+    storage=storage,
+    sampler=sampler,
+    pruner=pruner,
+    direction="minimize",
+)
 
 study.optimize(
     objective,
-    n_trials=...,
+    n_trials=5,
 )
 
 

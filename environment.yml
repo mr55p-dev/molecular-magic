@@ -19,5 +19,6 @@ dependencies:
     - scikit_learn==1.1.1
     - scipy==1.8.1
     - wandb==0.12.11
+    - optuna==2.10.1
+    - optuna-dashboard==0.7.1
     - tensorboard
-    - keras-tuner
