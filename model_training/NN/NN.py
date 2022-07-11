@@ -1,21 +1,19 @@
 """
 Reimplementation of `NN_custom_split.py`
 """
-from sklearn.model_selection import train_test_split
-import tensorflow as tf
-from tensorflow import keras
-import pandas as pd
-from tensorflow.keras.regularizers import l2
-import numpy as np
-from pathlib import Path
-from collections import defaultdict
-
 import wandb
-from wandb.keras import WandbCallback
 
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 
+from collections import defaultdict
+from pathlib import Path
 from datetime import datetime
-
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+from tensorflow.keras.regularizers import l2
+from wandb.keras import WandbCallback
 
 def get_tensorboard_callback(log_root: Path = Path("logs/")):
     now = datetime.now()
