@@ -143,3 +143,6 @@ dmypy.json
 # Data output
 static_data/
 logs/
+
+# Weights and biases
+wandb/

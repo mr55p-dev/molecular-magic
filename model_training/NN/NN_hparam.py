@@ -9,10 +9,8 @@ Reimplementation of `NN_custom_split.py`
 import wandb
 
 import numpy as np
-import keras_tuner as kt
-import pandas as pd
 import tensorflow as tf
-from tensorboard.plugins.hparams import api as hp
+import optuna as op
 
 
 from collections import defaultdict
@@ -20,8 +18,7 @@ from pathlib import Path
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.regularizers import l2
+
 from wandb.keras import WandbCallback
 
 random_seed = 50
@@ -45,6 +42,7 @@ def create_mol_formula(atom_vec) -> str:
     return "".join(
         map(lambda x: f"{x}{atom_vec[atom_order.index(x)]}", ["C", "N", "O", "H"])
     )
+
 
 atom_vector = (X[:, -15:-11] / 100).astype("int")
 molecular_formulae = list(map(create_mol_formula, atom_vector))
@@ -115,7 +113,7 @@ tuner_output = basepath / "tuner_checkpoint"
 
 # Define batch size and number of epochs
 batch_size = 64
-epochs = 1
+epochs = 5
 
 # Create tf.data.Dataset
 train_ds = (
@@ -157,24 +155,33 @@ test_ds = (
 #     staircase=True)
 
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries = [443*20, 443*40, 443*600, 443*900, 443*990],
-    values = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7],
-    name=None
+    boundaries=[443 * 20, 443 * 40, 443 * 600, 443 * 900, 443 * 990],
+    values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7],
+    name=None,
 )
 
 # Build the model
-def model_builder(hp):
-    
-    model = keras.Sequential()
-    model.add(layers.Input(shape=(X_train.shape[1])))
-    for i in range(hp.Int("num_layers", 1, 3)):
-        model.add(layers.Dense(
-            units=hp.Choice(f"layer_{i}_dims", [128, 512, 1024]),
-            activation="relu"))
-    model.add(layers.Dense(units=1, activation="linear"))
+def objective(trial: op.Trial):
+
+    # Define model architecture
+    l_input = keras.layers.Input(shape=(X_train.shape[1]))
+
+    prev_layer = l_input
+    for i in range(trial.suggest_int("num_layers", 1, 3)):
+        l_hidden = keras.layers.Dense(
+            units=trial.suggest_categorical(f"l{i}_dims", [128, 512, 1024]),
+            activation="relu",
+        )(prev_layer)
+        prev_layer = l_hidden
 
     # Test different activation functions
-    # Test dropout layer...
+    # Test dropout
+    l_output = keras.layers.Dense(
+        1,
+        activation="linear",
+    )(l_hidden)
+
+    model = keras.Model(inputs=l_input, outputs=l_output)
 
     print("Defined model")
     print(model.summary())
@@ -183,31 +190,47 @@ def model_builder(hp):
     loss_function = keras.losses.MeanSquaredError()
 
     model.compile(
-        optimizer = optimizer,
-        loss = loss_function,
-        metrics=['mse', 'mae'],
+        optimizer=optimizer,
+        loss=loss_function,
+        metrics=["mse", "mae"],
     )
     print("Compiled model")
 
-    return model
+    # Configure the weights and biases experiment
+    wandb_config = dict(
+        **{
+            "trial_number": trial.number,
+            "learning_rate": "20,40,600,900,990 st 1e-2",
+            "batch_size": batch_size,
+            "n_layers": trial.params["num_layers"],
+        },
+        **trial.params,
+    )  # Automatically includes the parameters we are using
+    wandb.init(
+        reinit=True,
+        project="MolecularMagic",
+        entity="molecular-magicians",
+        group=exp_name,
+        config=wandb_config,
+    )
 
+    # Fit the model
+    hist = model.fit(
+        train_ds,
+        validation_data=test_ds,
+        callbacks=[
+            op.integration.TFKerasPruningCallback(trial, "val_loss"),
+            WandbCallback(monitor="val_loss", save_model=False, log_weights=True),
+        ],
+        batch_size=batch_size,
+        epochs=epochs,
+    )
 
-###################################################
-# Weights and Biases setup                        #
-###################################################
+    # Mark the experiment as ended
+    wandb.finish(quiet=True)
 
-# wandb.init(project="MolecularMagic", entity="molecular-magicians")
-# wandb.config = {
-#     "learning_rate": "20,40,600,900,990 st 1e-2",
-#     "epochs": epochs,
-#     "batch_size": batch_size,
-#     "num_layers": num_layers,
-#     "l0_dims": l0_dims,
-#     "l1_dims": l1_dims,
-#     "l2_dims": l2_dims,
-#     "l2_dims": l3_dims
-#     # "regularization": regularization_degree,
-# }
+    return hist.history["val_loss"][-1]  # Return the end validation loss
+
 
 ###################################################
 # Fit the model                                   #
@@ -217,6 +240,7 @@ def generate_experiment_name(epochs, batch_size):
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
     return str(time_str + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
 
+
 exp_name = generate_experiment_name(epochs, batch_size)
 exp_name += "_decaylr"
 
@@ -224,41 +248,37 @@ exp_name += "_decaylr"
 # stop_callback = EarlyStopping(
 #     monitor='loss', patience=1, verbose=0, mode='auto')
 
-# Define tensorboard callback
-# tensorboard_callback = keras.callbacks.TensorBoard(tensorboard_output/exp_name),
-
 # Define model checkpoint callback
 # model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-    #     filepath=model_checkpoints_output,
-    #     monitor="val_mean_absolute_error",
-    #     mode="min",
-    #     save_best_only=True,
-    #     save_weights_only=True,
-    # ),
+#     filepath=model_checkpoints_output,
+#     monitor="val_mean_absolute_error",
+#     mode="min",
+#     save_best_only=True,
+#     save_weights_only=True,
+# ),
 
-# Tuner initialisation
-tuner = kt.RandomSearch(
-    hypermodel=model_builder, #model_builder
-    objective='val_loss',
-    # overwrite=True,
-    executions_per_trial=1,
-    directory=tuner_output,
-    project_name=exp_name,
-    seed=random_seed
+# Setup the hyperparmeter search
+# This is if you want to use optunas local optuna-dashboard system, which is pretty good
+# but not really as good as wandb
+# storage = op.storages.RedisStorage(
+#     url="redis://localhost:6379/optuna",
+# )
+storage = op.storages.InMemoryStorage()
+pruner = op.pruners.HyperbandPruner()
+sampler = op.samplers.RandomSampler(
+    seed=42
+)  # There are some more options in optuna that work well
+
+study = op.create_study(
+    study_name=exp_name,
+    storage=storage,
+    sampler=sampler,
+    pruner=pruner,
+    direction="minimize",
 )
 
-# Tuner execution
-tuner.search(
-    train_ds,
-    # steps_per_epoch=500,
-    validation_data=test_ds,
-    # validation_steps=300,
-    epochs=epochs, #epochs
-    verbose=1,
-    batch_size=batch_size,
-    callbacks=[
-        keras.callbacks.TensorBoard(tensorboard_output/exp_name),
-        # model_checkpoint_callback,
-        # WandbCallback()
-    ],
+# Run the optimization
+study.optimize(
+    objective,
+    n_trials=20,
 )
