@@ -18,6 +18,7 @@ from create_features_function_defs import (
     BuildOBMol,
     ExtractEnergy,
     ExtractFilename,
+    GenerateFeatures2,
     SelectHBonds,
     GetAtomSymbol,
     FindKDEMax,
@@ -88,29 +89,25 @@ y = []  # target vector for machine learning
 ###########################################################################################
 
 # -- These variables will be used to generate the distribution plots --
-BondLengths = (
-    dict()
-)  # create a dictionary key for every new bond type e.g. 'CH' and append bond legnth as values for every time that particular bond is detected
-AnglesTypes = (
-    dict()
-)  # create a dictionary key for every new angle type e.g. 'C-C-H' and append angles as values for every time that particular angle is detected
-DihedralTypes = dict()  # create a dictionary key for every new dihedral type
-PartCharges = (
-    dict()
-)  # create a dictionary key for every new atom type e.g. 'C' and append partial charge as values for every time that particular atom is detected
-HbondTypes = (
-    dict()
-)  # dictionary to collect H bond data {'OH-O' = [value1, value2, ...], 'NH-O' = [value1, value2, ...], etc}
+# Dictionary where each key corresponds to a unique combination of atoms, with the value being
+# a list containing the numerical value for every example of that combination in the dataset
+BondLengths = {}
+AnglesTypes = {}
+DihedralTypes = {}
+
+# Key for every new atom type e.g. 'C' and append partial charge as values for every time that particular atom is detected
+PartCharges = {}
+
+# Collect H bond data {'OH-O' = [value1, value2, ...], 'NH-O' = [value1, value2, ...], etc}
+HbondTypes = {}
+
 AtomTypeFeatures = []
 
-molecule_count = 0
-first10names = []
 filenames = []
 
 sample_outputnumber = len(GDB_data)
 
 for mol in GDB_data:
-
     # Save some props from the molecules identity
     GDB_OBmols.append(BuildOBMol(mol.atoms, mol.coords))
     OBmol_atoms.append(mol.atoms)
@@ -118,12 +115,6 @@ for mol in GDB_data:
 
     # Save the energy
     y.append(ExtractEnergy(mol))
-
-    # this gathers the geometry file names for the first ten molecules. This will be used at the end to print the X vector for first 10 molecules
-    if molecule_count < sample_outputnumber:
-        first10names += [ExtractFilename(mol)]
-
-    molecule_count += 1
 
     sys.stdout.write("\r")
     sys.stdout.write(
@@ -301,21 +292,6 @@ for OBmol in GDB_OBmols:
             GetAtomSymbol(OBmol.GetAtom(OBdihedral[3] + 1).GetAtomicNum()),
         ]  # CHANGED
 
-        # print(dihedraltype)
-        # -- Test for carbon coordination:
-        # create separate group for linear CC bonds
-
-        # if str(dihedraltype[1]) == 'C' and str(dihedraltype[2]) == 'C':
-        #    C1_coordno = str(OBmol.GetAtom(OBdihedral[1]+1).GetValence())
-        #    C2_coordno = str(OBmol.GetAtom(OBdihedral[2]+1).GetValence())
-
-        # print(C1_coordno)
-        # print(C2_coordno)
-
-        #    if C1_coordno == '2' and C2_coordno == '2': # select bonds where C1 and C2 have two neighbours
-        #        dihedraltype[1] = dihedraltype[1] + str(C1_coordno)
-        #        dihedraltype[2] = dihedraltype[2] + str(C2_coordno)
-
         if (
             str(dihedraltype[0] + dihedraltype[1] + dihedraltype[2] + dihedraltype[3])
             in DihedralTypes.keys()
@@ -483,8 +459,6 @@ for OBmol in GDB_OBmols:
             MolAtomData.get(atom, 0) + 1
         )  # '0' is the value to return if the specified key does not exist
 
-    # print(MolAtomData)
-
     # -- Save all information about the molecule to OBmol_data
     OBmol_data += [
         [
@@ -634,46 +608,6 @@ print("Max_Atomtypes: ", Max_Atomtypes)
 
 print("Saving features dictionaries - use them to generate features on a new dataset")
 
-# BondFeaturesDefFile = open(
-#     "./" + plot_location + "/" + plot_location + "_BondFeaturesDef.plk", "wb"
-# )
-# pickle.dump(BondFeaturesDef, BondFeaturesDefFile)
-# BondFeaturesDefFile.close()
-# print("Saved BondFeaturesDef")
-# print(BondFeaturesDef)
-
-# AngleFeaturesDefFile = open(
-#     "./" + plot_location + "/" + plot_location + "_AngleFeaturesDef.plk", "wb"
-# )
-# pickle.dump(AngleFeaturesDef, AngleFeaturesDefFile)
-# AngleFeaturesDefFile.close()
-# print("Saved AngleFeaturesDef")
-# print(AngleFeaturesDef)
-
-# DihedralFeaturesDefFile = open(
-#     "./" + plot_location + "/" + plot_location + "_DihedralFeaturesDef.plk", "wb"
-# )
-# pickle.dump(DihedralFeaturesDef, DihedralFeaturesDefFile)
-# DihedralFeaturesDefFile.close()
-# print("Saved DihedralFeaturesDef")
-# print(DihedralFeaturesDef)
-
-# MaxAtomTypesDefFile = open(
-#     "./" + plot_location + "/" + plot_location + "_MaxAtomTypesDef.plk", "wb"
-# )
-# pickle.dump(Max_Atomtypes, MaxAtomTypesDefFile)
-# MaxAtomTypesDefFile.close()
-# print("Saved MaxAtomTypesDef")
-# print(Max_Atomtypes)
-
-# HbondFeaturesDefFile = open(
-#     "./" + plot_location + "/" + plot_location + "_HbondFeaturesDef.plk", "wb"
-# )
-# pickle.dump(HbondFeaturesDef, HbondFeaturesDefFile)
-# MaxAtomTypesDefFile.close()
-# print("Saved HbondFeaturesDef")
-# print(HbondFeaturesDef)
-
 
 ###########################################################################################
 # Feature generation step 3 summary:
@@ -689,8 +623,41 @@ print("angleweight: ", bondweight)
 # Features vector
 
 print("Generating features matrix X for all molecules")
+# X_orig, _ = GenerateFeatures(
+#     OBmol_data,
+#     BondFeaturesDef,
+#     AngleFeaturesDef,
+#     DihedralFeaturesDef,
+#     Max_Atomtypes,
+#     HbondFeaturesDef,
+#     filenames,
+# )
 
-X, read_X = GenerateFeatures(
+# tmpfile = Path("static_data/tmp/dumped.pkl")
+# with open(tmpfile, "wb") as fi:
+#     pickle.dumps(
+#         [
+#             OBmol_data,
+#             BondFeaturesDef,
+#             AngleFeaturesDef,
+#             DihedralFeaturesDef,
+#             Max_Atomtypes,
+#             HbondFeaturesDef,
+#             filenames,
+#         ]
+#     )
+# with open(tmpfile, "rb") as fi:
+#     (
+#         OBmol_data,
+#         BondFeaturesDef,
+#         AngleFeaturesDef,
+#         DihedralFeaturesDef,
+#         Max_Atomtypes,
+#         HbondFeaturesDef,
+#         filenames,
+#     ) = pickle.loads(fi)
+
+X_new = GenerateFeatures2(
     OBmol_data,
     BondFeaturesDef,
     AngleFeaturesDef,
@@ -701,48 +668,23 @@ X, read_X = GenerateFeatures(
 )
 
 
-print("Matrix X preview:")
-print(X)
-
-print("Vector y preview:")
-print(y)
-
-print("Readable matrix X:")
-print(read_X)
-
-
-list_X = X.tolist()
-
-with open(output_basepath / "first_10.txt", "w") as first10file:
-    for vector in list_X[0:sample_outputnumber]:
-        string_vector = " ".join(str(component) for component in vector)
-        first10file.write(str(list_X.index(vector) + 1) + "\n")
-        first10file.write(first10names[list_X.index(vector)] + "\n")
-        first10file.write(string_vector + "\n")
-
-with open(
-    output_basepath / "readable_X.txt",
-    "w",
-) as readableXfile:
-    for index in range(len(read_X)):
-        readableXfile.write(read_X[index] + " ")
-
-
+print(len(X_orig))
+print(X_new.shape)
 # -- Save key vectors
-data_output_dir = output_basepath / "data"
-data_output_dir.mkdir(parents=True, exist_ok=True)
+# data_output_dir = output_basepath / "data"
+# data_output_dir.mkdir(parents=True, exist_ok=True)
 
-np.save(
-    data_output_dir / "features.npy",
-    X,
-    allow_pickle=True,
-)
-np.save(
-    data_output_dir / "labels.npy",
-    y,
-    allow_pickle=True,
-)
+# np.save(
+#     data_output_dir / "features.npy",
+#     X,
+#     allow_pickle=True,
+# )
+# np.save(
+#     data_output_dir / "labels.npy",
+#     y,
+#     allow_pickle=True,
+# )
 
 
-print("There are " + str(len(X[0])) + " features")
-print("Successfully created feature vector X and target vector y")
+# print("There are " + str(len(X[0])) + " features")
+# print("Successfully created feature vector X and target vector y")

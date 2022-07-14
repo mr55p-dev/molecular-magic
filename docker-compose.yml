@@ -1,8 +1,0 @@
-version: '3.4'
-
-services:
-  molecularmagic:
-    image: molecularmagic
-    build:
-      context: .
-      dockerfile: ./Dockerfile
