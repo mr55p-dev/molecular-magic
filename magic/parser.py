@@ -63,8 +63,8 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     Energies should be taken from frequency files, assuming these are always identical though.
     This needs to be checked also.
     UPDATE the energies in the frequency and geometry files are consistent
-        There is an error, with a cumulative value of: eV
-
+        There is an error, with a cumulative value of: ~0.004eV on the entire part1 dataset
+        This can be considered neglegable
 
     TODO: #23 Look into open babel kekulerize warning
 
