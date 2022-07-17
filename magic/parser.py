@@ -29,14 +29,16 @@ def read_geom(path: Path) -> pb.Molecule:
     if ccdata is None:
         raise ValueError(f"cclib could not parse data for {path}")
 
-    assert hasattr(ccdata, "scfenergies")
+    if not hasattr(ccdata, "scfenergies"):
+        raise ValueError(f"cclib could not extract energies")
+
     scf_energies = ccdata.scfenergies
     assert scf_energies is not None
 
     # Always use the latest scf energy computed in the file (assuming these are in order)
     scf_ev = ccdata.scfenergies[-1]
 
-    # TODO: Check openbabel has worked its magic
+    # TODO: #25 Check openbabel has worked its magic
     assert mol
 
     # Convert the energy reported from eV to Hartrees (as per original spec)
@@ -50,6 +52,7 @@ def read_geom(path: Path) -> pb.Molecule:
 
 def filter_mols(molecule: pb.Molecule) -> bool:
     """Defines filtering rules to eliminate molecules from the dataset"""
+    # TODO #26 implement the filtering rules which the paper requires here
 
     return True
 
