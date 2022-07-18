@@ -5,6 +5,7 @@ Function definitions for manipulating the molecules defined in Database.py
 from pathlib import Path
 import sys
 from collections import Counter
+from typing import Any, Dict, Iterable, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +18,7 @@ from create_features_config import (
     PTable,
     bondweight,
     atomweight,
-    fileswanted,
+    files_wanted,
 )
 
 
@@ -275,25 +276,21 @@ def GenerateFeatures(
 
     # Generate readable X vector for the output:
 
+    # All useless code
     for bonddict_key, bonddict_values in bonddict.items():
         feat_vec = [bonddict_key] * len(bonddict_values[0])
-        readable_X += feat_vec
 
     for angledict_key, angledict_values in angledict.items():
         feat_vec = [angledict_key] * len(angledict_values[0])
-        readable_X += feat_vec
 
     for dihedraldict_key, dihedraldict_values in dihedraldict.items():
         feat_vec = [dihedraldict_key] * len(dihedraldict_values[0])
-        readable_X += feat_vec
 
     for atom_key, atom_values in maxatomtypes.items():
         feat_vec = [atom_key]
-        readable_X += feat_vec
 
     for Hbond_key, Hbond_values in hbonddict.items():
         feat_vec = [Hbond_key] * len(Hbond_values[0])
-        readable_X += feat_vec
 
     feat_vec = ["NH1", "NH2", "NH3"]
     readable_X += feat_vec
@@ -321,14 +318,14 @@ def GenerateFeatures(
 
         # -- Bond Features Vector Generation
         # -- (use 'print' statements to test the code is working properly)
-        if FileName in fileswanted:
+        if FileName in files_wanted:
 
             print("MolBondDict:")
             print(MolBondDict)
 
         for bonddict_key, bonddict_values in bonddict.items():
 
-            if FileName in fileswanted:
+            if FileName in files_wanted:
                 print(FileName)
                 # bonddict_key in format 'CC', 'CH', etc for total dictionary
                 # bonddict_values in format [[maximas], [minimas]]
@@ -367,7 +364,7 @@ def GenerateFeatures(
                         # else find the index of the minima where the bond length under consideration becomes larger
                         feat_vec[feat_idx] += 1 * bondweight
 
-                if FileName in fileswanted:
+                if FileName in files_wanted:
                     print("bond feat_vecc:")
                     print(feat_vec)
 
@@ -460,7 +457,7 @@ def GenerateFeatures(
 
         for atom_key, atom_values in maxatomtypes.items():
 
-            print('atom_key: ', atom_key)
+            print("atom_key: ", atom_key)
 
             maxatomkeys = list(maxatomtypes.keys())
 
@@ -469,7 +466,7 @@ def GenerateFeatures(
                     MolAtomDict[atom_key] * atomweight
                 )
 
-        Mol_X += feat_vec # [714:718]
+        Mol_X += feat_vec  # [714:718]
 
         # -- Hbond Feature Vector Generation
         for hbonddict_key, hbonddict_values in hbonddict.items():
@@ -513,7 +510,7 @@ def GenerateFeatures(
 
         X += [Mol_X]
 
-        if FileName in fileswanted:
+        if FileName in files_wanted:
             print("Mol_X:")
             print(Mol_X)
 
@@ -535,10 +532,172 @@ def GenerateFeatures(
     return np.array(X), readable_X
 
 
+def feat(x: Dict[Any, List[List[float]]]) -> int:
+    """Calculate the number of features given a passed Dict[Any, List[maxima, minima]]"""
+    return sum([len(i[0]) for i in x.values()])
+
+
+def GenerateFeatures2(obmol_data, bonds, angles, dihedrals, maxatomtypes, hbonds, _):
+    """
+    :args:
+        obmol_data (list): List of molecules. Each molecule is a list of dicts
+            containing bond, angle, dihedral, atom type count, h-bonding and
+            amine functional group frequency data
+
+        bonds (dict):
+            Dict where each key is a unique atom combination occuring in the data.
+            Each value is a list [maxima, minima], where maxima and minima are a
+            list of kde maxima and minima
+
+        angles (dict):
+            Similar structure to bonds
+
+        dihedrals (dict):
+            Similar structure to angles
+
+        maxatomtypes (dict):
+            Contains the maximum number of occurences of an atom in a single molecule
+            in the dataset
+
+        hbonds (dict):
+            Similar structure to dihedrals
+
+        filenames (list):
+            List of filenames to exclude from dataset generation
+    """
+
+    X = []
+    # Create features in the order of:
+    # Bonds
+    # Angles
+    # Dihedrals
+    # Atom type frequencies (4)
+    # Hydrogen bond types
+    # Be mindful that dictionary order isn't guarenteed
+
+    # Add 3 for the number of amine types
+    n_features = (
+        feat(bonds)
+        + feat(angles)
+        + feat(dihedrals)
+        + feat(hbonds)
+        + len(maxatomtypes)
+        + 3
+    )
+
+    feat_vec = np.ndarray((len(obmol_data), n_features))
+
+    for idx, mol in enumerate(obmol_data):
+        # Get out the mol info
+        mol_bonds: Dict = mol[0]
+        mol_angles: Dict = mol[1]
+        mol_dihedrals: Dict = mol[2]
+        mol_hbonds: Dict = mol[4]
+        mol_amines: Dict = mol[5]
+        mol_atoms: Dict = mol[3]
+
+        # Convert some of the more annoying ones to numpy arrays
+        mol_atoms_vec = np.array(mol_atoms)
+        mol_amines_vec = np.array(mol_amines)
+
+        # Extract the binned feature vectors for each of the properties
+        mol_bonds_vec = get_binned_features(mol_bonds, bonds)
+        mol_angles_vec = get_binned_features(mol_angles, angles)
+        mol_dihedrals_vec = get_binned_features(mol_dihedrals, dihedrals)
+        mol_hbonds_vec = get_binned_features(mol_hbonds, hbonds)
+
+        # LOAD UP THE GDB9 OBJECTS AND CHECK THAT THE FIRST ITEM IS H2O
+
+        feat_vec[idx, :] = np.concatenate(
+            (
+                mol_bonds_vec,
+                mol_angles_vec,
+                mol_dihedrals_vec,
+                mol_atoms_vec,
+                mol_hbonds_vec,
+                mol_amines_vec,
+            )
+        )
+
+    return feat_vec, None
+
+
+def get_binned_features(
+    mol_props: Dict[str, List[float]], global_props: Dict[str, List[float]]
+) -> np.ndarray:
+    """Calculates the feature vector for all types of a certain property in a molecule"""
+
+    # Create the total vector
+    total_vec_length = feat(global_props)
+    total_vec = np.zeros(shape=(total_vec_length,))
+
+    # Setup an array index pointer to track where to insert values from
+    ptr = 0
+    for global_prop_type, (kde_maxima, kde_minima) in global_props.items():
+        # Compute the number of features this quantity will require
+        feat_len = len(kde_maxima)
+
+        # Setup the initial vector
+        vec = np.zeros(shape=(feat_len,))
+
+        # Check if the molecule has this property
+        if global_prop_type in mol_props:
+            # Get all the values of this type
+            mol_prop_vals = mol_props[global_prop_type]
+
+            for val in mol_prop_vals:
+                vec += assign_binned_vec(kde_maxima, kde_minima, val)
+
+        # Assign the molecular values to the correct vector portion
+        total_vec[ptr : ptr + feat_len] = vec
+
+        # Increment the array pointer
+        ptr += len(kde_maxima)
+
+    return total_vec
+
+
+def assign_binned_vec(
+    maxima: List[float], minima: List[float], value: Dict[str, float]
+) -> np.ndarray:
+    """
+    Create a vector with bins:
+    [-inf, min0], [min0, min1], ..., [min_n, inf]
+    note that minima does not contain the lower or upper bounds,
+    these need to be inserted by the function itself
+    """
+    vec = np.zeros(shape=(len(maxima),))
+
+    # if value < minima[0]:
+    #     raise ValueError("value less than smallest minima")
+
+    # if value > minima[-1]:
+    #     raise ValueError("value greater than largest minima")
+    # 0    1    2    3
+    # [f0, 0.5, 1.0, 2.0]
+    # [-inf, 0.3, 0.7, 1.4, 2.7, inf]
+    # v = 99
+
+    # YOU CANT TRUST WHAT THE OTHER CODE SAYS HISSSSS
+    # CHECK THE PAPER FOR A PROPER REFERENCE ON HOW TO
+    # BIN THE HISTOGRAM VALUES - WHAT HAPPENS AT THE LIMITS?
+    # HOW MANY FEATURES SHOULD THERE EVEN BE???
+
+
+    ptr = 0
+    for i, m in enumerate([-np.inf] + minima + [np.inf]):
+        if value < m:
+            vec[i-1] = 1
+            break
+
+        ptr += 1
+
+    return vec
+
+
 def GetDistance(mol, atoms):
     """
     Returns distance of two specific atoms in OBmol
-
     """
 
     a1 = mol.GetAtom(atoms[0])
