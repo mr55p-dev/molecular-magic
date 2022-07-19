@@ -45,9 +45,6 @@ def read_geom(path: Path) -> pb.Molecule:
     if not hasattr(ccdata, "scfenergies"):
         raise ValueError("cclib could not extract energies")
 
-    scf_energies = ccdata.scfenergies
-    assert scf_energies is not None
-
     # Always use the latest scf energy computed in the file (assuming these are in order)
     scf_ev = ccdata.scfenergies[-1]
 
@@ -70,7 +67,7 @@ def filter_mols(molecule: pb.Molecule) -> bool:
     This will require data from the geometry and frequency calculation steps.
 
     Can make a preprocessing step where the combined data is stored as keys in the sdf file
-    and then a second script to read those sdfs and their properties """
+    and then a second script to read those sdfs and their properties"""
     return True
 
 
