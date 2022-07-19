@@ -70,8 +70,7 @@ def filter_mols(molecule: pb.Molecule) -> bool:
     This will require data from the geometry and frequency calculation steps.
 
     Can make a preprocessing step where the combined data is stored as keys in the sdf file
-    and then a second script to read those sdfs and their properties
-    """
+    and then a second script to read those sdfs and their properties """
     return True
 
 
@@ -86,8 +85,6 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     UPDATE the energies in the frequency and geometry files are consistent
         There is an error, with a cumulative value of: ~0.004eV on the entire part1 dataset
         This can be considered neglegable
-
-    TODO: #23 Look into open babel kekulerize warning
 
     basepath:
         Directory containing all the files with specified format
