@@ -31,3 +31,13 @@ The workspace which contains runs and information is hosted [here](https://wandb
   - `tensorboard --logdir=./`
 - NN logs are store in `./static_data/NN_rewrite`.
 - TO-DO: Define weights and biases setup and usage
+
+----
+
+# Reimplementation
+
+## Create cleaned annotated sdf files
+
+Run the script `clean.py` with its available arguments:
+  - `-i`: Pass the directory which contains the input files. Note this can be a folder of folders; any `out` files in the `g09` in the subtree will be discovered.
+  - `-o`: The output directory to write `sdf` files to. These files will have a `scf_energy` key which contains the final scf caluclated energy.
