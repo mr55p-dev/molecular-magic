@@ -11,8 +11,21 @@ import cclib
 from tqdm import tqdm
 
 
+def check_convergence(path: Path) -> bool:
+    """Open a file and check that its converged.
+
+    This must be done on a submitted geometry file, as the frequency files do not
+    modify the geometry in their steps"""
+    with path.open("r") as f:
+        stat = cclib.io.ccread(f).optdone
+
+    return stat
+
+
 def read_geom(path: Path) -> pb.Molecule:
     """Read a gaussian output file into an OBMol object with scf energy annotated
+
+    Should only be used on converged files - this is NOT CHECKED here
 
     path:
         Path to the gaussian16 (g09) encoded file object
@@ -30,7 +43,7 @@ def read_geom(path: Path) -> pb.Molecule:
         raise ValueError(f"cclib could not parse data for {path}")
 
     if not hasattr(ccdata, "scfenergies"):
-        raise ValueError(f"cclib could not extract energies")
+        raise ValueError("cclib could not extract energies")
 
     scf_energies = ccdata.scfenergies
     assert scf_energies is not None
@@ -51,9 +64,14 @@ def read_geom(path: Path) -> pb.Molecule:
 
 
 def filter_mols(molecule: pb.Molecule) -> bool:
-    """Defines filtering rules to eliminate molecules from the dataset"""
-    # TODO #26 implement the filtering rules which the paper requires here
+    """Defines filtering rules to eliminate molecules from the dataset.
 
+    If new molecules are added, it will need to check everything from the original paper.
+    This will require data from the geometry and frequency calculation steps.
+
+    Can make a preprocessing step where the combined data is stored as keys in the sdf file
+    and then a second script to read those sdfs and their properties
+    """
     return True
 
 
