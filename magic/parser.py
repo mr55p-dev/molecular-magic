@@ -2,12 +2,15 @@
 Utils for parsing g09 formatted output files into an annotated
 SDF file.
 
-Requires cclib to be installed
+Requires cclib and bz2 to be installed
 """
 
+from io import StringIO
+from itertools import islice
 from pathlib import Path
 import openbabel.pybel as pb
 import cclib
+import bz2
 from tqdm import tqdm
 
 
@@ -49,7 +52,7 @@ def read_geom(path: Path) -> pb.Molecule:
     scf_ev = ccdata.scfenergies[-1]
 
     # TODO: #25 Check openbabel has worked its magic
-    assert mol
+    assert mol is not None
 
     # Convert the energy reported from eV to Hartrees (as per original spec)
     scf_energy = scf_ev * 0.036749322176
@@ -102,12 +105,23 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     mol_subset = filter(filter_mols, mol)
 
     # Check the ouptut directory exists, and create if it does not
-    outpath.mkdir(parents=True, exist_ok=True)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create a compression object
+    compressor = bz2.BZ2Compressor()
 
     # Write appropriate objects into outpath under the same filename
-    # Ideally we write to just one output file, but this seems easier for now
-    # TODO: #24 Write the converted output to a single sdf file
-    # TQDM total is approximate total
-    for idx, mol in tqdm(enumerate(mol_subset), total=len(matched_paths)):
-        output_file = outpath / f"{idx}.out"
-        mol.write(format=fmt, filename=str(output_file), overwrite=True)
+    with outpath.open("wb") as buffer:
+        # Iterate the molecules
+        for mol in tqdm(mol_subset, total=len(matched_paths)):
+            raw_output: str = mol.write(format=fmt)
+            bytes_output = raw_output.encode("utf-8")
+            compressed_output = compressor.compress(bytes_output)
+            buffer.write(compressed_output)
+
+        buffer.write(compressor.flush())
+
+        # 2 min 19 s uncompressed
+        # min s compressed
+
+
