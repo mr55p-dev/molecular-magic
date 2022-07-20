@@ -114,14 +114,14 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     with outpath.open("wb") as buffer:
         # Iterate the molecules
         for mol in tqdm(mol_subset, total=len(matched_paths)):
+            # Pybel returns a string in the case that no output file is provided
             raw_output: str = mol.write(format=fmt)
+            # Encode the string to utf8 bytes
             bytes_output = raw_output.encode("utf-8")
+            # Compress those bytes
             compressed_output = compressor.compress(bytes_output)
+            # Stream them into the output file
             buffer.write(compressed_output)
 
+        # Make sure nothing gets left behind in the compressor
         buffer.write(compressor.flush())
-
-        # 2 min 19 s uncompressed
-        # min s compressed
-
-
