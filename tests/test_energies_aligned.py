@@ -4,24 +4,25 @@ import cclib
 
 
 # This should be the path to the raw data file
-base = Path("/Users/ellis/Downloads/Part1")
-geom = base.glob("./**/*a.out")
-freq = base.glob("./**/*f.out")
+base = Path("dft_test_files")
 
-getname = lambda x: x.stem[:-1]
-geom = sorted(geom, key=getname)
-freq = sorted(freq, key=getname)
 
-pairs = list(zip(geom, freq))
+def test_freq_geom_agreement():
+    freq = base.glob("./**/*f.out")
 
-err = 0
-for g, f in tqdm(pairs):
-    with g.open("r") as gfi, f.open("r") as ffi:
-        eg = cclib.io.ccread(gfi)
-        ef = cclib.io.ccread(ffi)
+    def getname(x: Path) -> str:
+        return x.stem[:-1]
 
-    assert getname(g) == getname(f)
-    err += abs(eg.scfenergies[-1] - ef.scfenergies[-1])
+    err = 0
+    for f in tqdm(freq):
+        g = f.parent / (getname(f) + "a.out")
+        assert g.exists()
 
-print(err)
+        with g.open("r") as gfi, f.open("r") as ffi:
+            eg = cclib.io.ccread(gfi)
+            ef = cclib.io.ccread(ffi)
 
+        assert getname(g) == getname(f)
+        err += abs(eg.scfenergies[-1] - ef.scfenergies[-1])
+
+    assert err < 0.1
