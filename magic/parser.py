@@ -4,10 +4,8 @@ SDF file.
 
 Requires cclib and bz2 to be installed
 """
-
-from io import StringIO
-from itertools import islice
 from pathlib import Path
+from typing import Generator
 import openbabel.pybel as pb
 import cclib
 import bz2
@@ -62,6 +60,29 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
     mol.data.update({"scf_energy": scf_energy})
 
     return mol
+
+
+def read_sdf_archive(archive_path: Path) -> Generator[pb.Molecule, None, None]:
+    """Open a bz2 archive containing SDF-formatted molecules and return an iterator over
+    pybel molecules"""
+
+    # Create an array to hold relevant lines
+    linebuffer = []
+
+    # Open the archive and start reading lines
+    with bz2.BZ2File(archive_path, mode="rb") as archive:
+        for line in archive.readlines():
+            linebuffer.append(line)
+            if b"$$$$" in line:
+                # Decode bytes array into string
+                sdf_string = b"".join(linebuffer)
+                sdf_string = sdf_string.decode("utf-8")
+
+                # Flush the buffer if we reach the termination line
+                linebuffer.clear()
+
+                # Construct an pb.Molecule
+                yield pb.readstring(format="sdf", string=sdf_string)
 
 
 def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
