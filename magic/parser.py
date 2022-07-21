@@ -16,8 +16,8 @@ from magic.rules import filter_mols
 def check_convergence(path: Path) -> bool:
     """Open a file and check that its converged.
 
-    This must be done on a submitted geometry file, as the frequency files do not
-    modify the geometry in their steps"""
+    This must be done on a submitted geometry file, as the frequency
+    files do not modify the geometry in their steps"""
     with path.open("r") as f:
         stat = cclib.io.ccread(f).optdone
 
@@ -47,7 +47,8 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
     if not hasattr(ccdata, "scfenergies"):
         raise ValueError("cclib could not extract energies")
 
-    # Always use the latest scf energy computed in the file (assuming these are in order)
+    # Always use the latest scf energy computed in the file
+    # (assuming these are in order)
     scf_ev = ccdata.scfenergies[-1]
 
     # TODO: #25 Check openbabel has worked its magic
@@ -63,8 +64,8 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
 
 
 def read_sdf_archive(archive_path: Path) -> Generator[pb.Molecule, None, None]:
-    """Open a bz2 archive containing SDF-formatted molecules and return an iterator over
-    pybel molecules"""
+    """Open a bz2 archive containing SDF-formatted molecules and return an
+    iterator over pybel molecules"""
 
     # Create an array to hold relevant lines
     linebuffer = []
@@ -90,12 +91,9 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
 
     Always uses the more advanced frequncy calculation
 
-    Might need to use geometry files to check for convergence, look into this further
-    Energies should be taken from frequency files, assuming these are always identical though.
-    This needs to be checked also.
-    UPDATE the energies in the frequency and geometry files are consistent
-        There is an error, with a cumulative value of: ~0.004eV on the entire part1 dataset
-        This can be considered neglegable
+    There is an error between converged frequency and geometry files,
+    with a cumulative value of: ~0.004eV on the entire part1 dataset.
+    This can be considered neglegable.
 
     basepath:
         Directory containing all the files with specified format
@@ -125,7 +123,7 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     with outpath.open("wb") as buffer:
         # Iterate the molecules
         for mol in tqdm(mol_subset, total=len(matched_paths)):
-            # Pybel returns a string in the case that no output file is provided
+            # Pybel returns a string if no output file is provided
             raw_output: str = mol.write(format=fmt)
             # Encode the string to utf8 bytes
             bytes_output = raw_output.encode("utf-8")

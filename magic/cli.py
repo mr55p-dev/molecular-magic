@@ -24,8 +24,7 @@ def main(argv=sys.argv):
 
     # Create a parser option
     subparsers = base_parser.add_subparsers(
-        title="subcommands",
-        description="utilities defined in the module"
+        title="subcommands", description="utilities defined in the module"
     )
     parser = subparsers.add_parser(
         name="parser",
@@ -39,8 +38,8 @@ def main(argv=sys.argv):
         required=True,
         type=Path,
         help="""Pass the directory which contains the input files. Note this
-        can be a folder of folders; any `*f.out` files processed by `g09` in the
-        subtree will be discovered."""
+        can be a folder of folders; any `*f.out` files processed by `g09` in
+        the subtree will be discovered.""",
     )
     parser.add_argument(
         "-o",
@@ -50,11 +49,12 @@ def main(argv=sys.argv):
         help="""The output SDF archive. Instances have a sdf_energy
         key which contains the extracted energy. File is saved as a
         bz2-compressed archive, which can be recovered using methods
-        implemented in magic.parser"""
+        implemented in magic.parser""",
     )
 
     args = base_parser.parse_args(argv[1:])
     print(args)
+
 
 if __name__ == "__main__":
     main(sys.argv)
