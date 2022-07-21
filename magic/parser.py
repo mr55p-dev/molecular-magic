@@ -26,7 +26,7 @@ def check_convergence(path: Path) -> bool:
     return stat
 
 
-def read_geom(path: Path) -> pb.Molecule:
+def read_dft_frequency(path: Path) -> pb.Molecule:
     """Read a gaussian output file into an OBMol object with scf energy annotated
 
     Should only be used on converged files - this is NOT CHECKED here
@@ -89,7 +89,7 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     matched_paths = list(basepath.glob("./**/*f.out"))
 
     # Read those files and extract geometries and scf energies
-    mol = map(read_geom, matched_paths)
+    mol = map(read_dft_frequency, matched_paths)
 
     # Filter this list to remove any bad objects
     mol_subset = filter(filter_mols, mol)
