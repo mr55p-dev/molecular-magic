@@ -15,6 +15,7 @@ fmt:
 Depends on `cclib` and `bz2`.
 """
 from argparse import ArgumentParser
+from magic.parser import convert_tree
 from pathlib import Path
 import sys
 
@@ -51,9 +52,10 @@ def main(argv=sys.argv):
         bz2-compressed archive, which can be recovered using methods
         implemented in magic.parser""",
     )
+    parser.set_defaults(func=convert_tree)
 
     args = base_parser.parse_args(argv[1:])
-    print(args)
+    args.func(args)
 
 
 if __name__ == "__main__":

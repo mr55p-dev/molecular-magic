@@ -4,6 +4,7 @@ SDF file.
 
 Requires cclib and bz2 to be installed
 """
+from argparse import Namespace
 from pathlib import Path
 from typing import Generator
 import openbabel.pybel as pb
@@ -86,7 +87,7 @@ def read_sdf_archive(archive_path: Path) -> Generator[pb.Molecule, None, None]:
                 yield pb.readstring(format="sdf", string=sdf_string)
 
 
-def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
+def convert_tree(args: Namespace) -> None:
     """Convert all the files from basepath into filtered output in outpath
 
     Always uses the more advanced frequncy calculation
@@ -102,6 +103,10 @@ def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
     fmt:
         File format of the output
     """
+
+    basepath = args.input
+    outpath = args.output
+    fmt = 'sdf'
 
     # Walk the basepath directory and discover all the
     # g09 formatted output files
