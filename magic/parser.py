@@ -12,6 +12,7 @@ import openbabel.pybel as pb
 import cclib
 import bz2
 from tqdm import tqdm
+from magic.rules import filter_mols
 
 
 def check_convergence(path: Path) -> bool:
@@ -61,17 +62,6 @@ def read_geom(path: Path) -> pb.Molecule:
     mol.data.update({"scf_energy": scf_energy})
 
     return mol
-
-
-def filter_mols(molecule: pb.Molecule) -> bool:
-    """Defines filtering rules to eliminate molecules from the dataset.
-
-    If new molecules are added, it will need to check everything from the original paper.
-    This will require data from the geometry and frequency calculation steps.
-
-    Can make a preprocessing step where the combined data is stored as keys in the sdf file
-    and then a second script to read those sdfs and their properties"""
-    return True
 
 
 def convert_tree(basepath: Path, outpath: Path, fmt="sdf") -> None:
