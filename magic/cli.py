@@ -57,6 +57,20 @@ def main(argv=sys.argv):
     )
     parser.set_defaults(func=parse_dft_tree)
 
+    # Create a vectorizer option
+    vectorizer = subparsers.add_parser(
+        name="vectorizer",
+        description="""Compute the feature vector
+        from a given archive file.""",
+    )
+    vectorizer.add_argument(
+        "archive",
+        type=Path,
+        help="""The bz2 archive of SDF structures annotated by the
+        parser utility.""",
+    )
+    vectorizer.set_defaults(func=...)
+
     args = base_parser.parse_args(argv[1:])
     args.func(args)
 
