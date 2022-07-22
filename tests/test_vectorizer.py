@@ -1,6 +1,6 @@
 from math import inf
 from pathlib import Path
-from magic.vectorizer import calculate_mol_data, should_reverse
+from magic.vectorizer import calculate_mol_data, _should_reverse
 from magic.parser import read_sdf_archive
 import pytest
 
@@ -43,4 +43,4 @@ def test_feature_extraction():
 @pytest.mark.parametrize("arr,truth", array_reversal_test_data)
 def test_array_reversal(arr: list[int], truth):
     """Check the array reversal function works as expected"""
-    assert should_reverse(arr) == truth
+    assert _should_reverse(arr) == truth

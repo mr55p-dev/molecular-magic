@@ -51,66 +51,6 @@ class MoleculeData:
     hbonds: HistogramData
 
 
-# Util functions
-def should_reverse(arr: list[Any]) -> bool:
-    """Check if we should reverse a representation to ensure
-    order is consistent"""
-    # Find the midpoint of our list
-    middle = len(arr) // 2
-
-    # Iterate from the edges to the center
-    for left, right in zip(arr[:middle], reversed(arr[middle:])):
-        # If there are a pair such that right > left then we will instruct
-        # reversal to occur
-        if left < right:
-            return True
-    return False
-
-
-def sort_atoms(atoms: tuple[ob.OBAtom]) -> tuple[ob.OBAtom]:
-    """Ensure atoms is always in the order heaviest to smallest."""
-    # Convert the atoms into atomic numbers
-    # Remove unnecessary calls to GetAtomicNum for torsion checks
-    atom_nums = [i.GetAtomicNum() for i in atoms]
-    return atoms[::-1] if should_reverse(atom_nums) else atoms
-
-
-def create_dict_key(atoms: list[ob.OBAtom]) -> tuple[int]:
-    """Convert atom sequence into a list of atomic numbers"""
-    return tuple(i.GetAtomicNum() for i in atoms)
-
-
-def collect_neighbours(proton: ob.OBAtom) -> DonorPair:
-    """Protons should have only one neighbour"""
-    for neighbour in ob.OBAtomAtomIter(proton):
-        return DonorPair(proton, neighbour)
-
-
-def get_combinations(
-    donor_set: list[DonorPair], acceptor_set: list[ob.OBAtom]
-) -> Generator[HBondInteraction, None, None]:
-    """Yields an iterator over every possible donor-acceptor interaction
-    in the system."""
-    for donor in donor_set:
-        for acceptor in acceptor_set:
-            yield HBondInteraction(
-                proton=donor.proton,
-                bonded_atom=donor.bonded_atom,
-                acceptor=acceptor,
-            )
-
-
-def proton_is_enabled(proton: pb.Atom, enablers: tuple[int]) -> bool:
-    """Check if the proton has a neighbour in the enablers list
-    Enablers should be a list of atomic numbers"""
-    for neighbour in ob.OBAtomAtomIter(proton.OBAtom):
-        if neighbour.GetAtomicNum() in enablers:
-            return True
-
-    return False
-
-
-# Main
 def calculate_mol_data(
     molecule: pb.Molecule, hbond_distance: tuple[float, float]
 ) -> MoleculeData:
@@ -136,17 +76,80 @@ def calculate_mol_data(
     return MoleculeData(atoms, amines, bonds, angles, dihedrals, hbonds)
 
 
+# Util functions
+def _should_reverse(arr: list[Any]) -> bool:
+    """Check if we should reverse a representation to ensure
+    order is consistent"""
+    # Find the midpoint of our list
+    middle = len(arr) // 2
+
+    # Iterate from the edges to the center
+    for left, right in zip(arr[:middle], reversed(arr[middle:])):
+        # If there are a pair such that right > left then we will instruct
+        # reversal to occur
+        if left < right:
+            return True
+    return False
+
+
+def _sort_atoms(atoms: tuple[ob.OBAtom]) -> tuple[ob.OBAtom]:
+    """Ensure atoms is always in the order heaviest to smallest."""
+    # Convert the atoms into atomic numbers
+    # Remove unnecessary calls to GetAtomicNum for torsion checks
+    atom_nums = [i.GetAtomicNum() for i in atoms]
+    return atoms[::-1] if _should_reverse(atom_nums) else atoms
+
+
+def _create_dict_key(atoms: list[ob.OBAtom]) -> tuple[int]:
+    """Convert atom sequence into a list of atomic numbers"""
+    return tuple(i.GetAtomicNum() for i in atoms)
+
+
+def _collect_neighbours(proton: ob.OBAtom) -> DonorPair:
+    """Protons should have only one neighbour"""
+    for neighbour in ob.OBAtomAtomIter(proton):
+        return DonorPair(proton, neighbour)
+
+
+def _get_combinations(
+    donor_set: list[DonorPair], acceptor_set: list[ob.OBAtom]
+) -> Generator[HBondInteraction, None, None]:
+    """Yields an iterator over every possible donor-acceptor interaction
+    in the system."""
+    for donor in donor_set:
+        for acceptor in acceptor_set:
+            yield HBondInteraction(
+                proton=donor.proton,
+                bonded_atom=donor.bonded_atom,
+                acceptor=acceptor,
+            )
+
+
+def _proton_is_enabled(proton: pb.Atom, enablers: tuple[int]) -> bool:
+    """Check if the proton has a neighbour in the enablers list
+    Enablers should be a list of atomic numbers"""
+    for neighbour in ob.OBAtomAtomIter(proton.OBAtom):
+        if neighbour.GetAtomicNum() in enablers:
+            return True
+
+    return False
+
+
 def _get_amine_counts(molecule: ob.OBMol) -> Iterator[int]:
     """Return an iterable of amine degrees present in the molecule
 
     TODO: #30 What are we using as the formal definition of an amine?
     """
     # Get all the nitrogen atoms (this will include imines and nitriles)
-    nitrogen_centers = [atom for atom in ob.OBMolAtomIter(molecule) if atom.GetAtomicNum() == 7]
+    nitrogen_centers = [
+        atom for atom in ob.OBMolAtomIter(molecule) if atom.GetAtomicNum() == 7
+    ]
 
     # More traditional amine defintion (excludes imines, nitriles)
     # Without this, imines get classified as primary amines
-    nitrogen_centers = filter(lambda atom: atom.CountBondsOfOrder(1) == 3, nitrogen_centers)
+    nitrogen_centers = filter(
+        lambda atom: atom.CountBondsOfOrder(1) == 3, nitrogen_centers
+    )
 
     # Classify each as primary, secondary or tertiary
     return map(
@@ -162,7 +165,7 @@ def _get_bonds_data(molecule: ob.OBMol) -> HistogramData:
     bonds = defaultdict(list)
     for ob_bond in ob.OBMolBondIter(molecule):
         # Get the participating atoms
-        atoms = sort_atoms(
+        atoms = _sort_atoms(
             (
                 ob_bond.GetBeginAtom(),
                 ob_bond.GetEndAtom(),
@@ -171,7 +174,7 @@ def _get_bonds_data(molecule: ob.OBMol) -> HistogramData:
 
         # Save the atomic numbers list
         bond_length = ob_bond.GetLength()
-        bonds[create_dict_key(atoms)].append(bond_length)
+        bonds[_create_dict_key(atoms)].append(bond_length)
 
     return bonds
 
@@ -184,7 +187,7 @@ def _get_angles_data(molecule: ob.OBMol) -> HistogramData:
         # Get the participating atoms
         # ob_angle contains an array of atom indices (shifted by 1
         # for some reason)
-        atoms = sort_atoms(
+        atoms = _sort_atoms(
             (
                 molecule.GetAtom(ob_angle[0] + 1),
                 molecule.GetAtom(ob_angle[1] + 1),
@@ -195,7 +198,7 @@ def _get_angles_data(molecule: ob.OBMol) -> HistogramData:
         # Calculate the angle
         angle_degree = molecule.GetAngle(*atoms)
 
-        key = create_dict_key(atoms)
+        key = _create_dict_key(atoms)
 
         # Check if the center atom is a carbon
         if (c_atom := atoms[1]).GetAtomicNum() == 6:
@@ -216,7 +219,7 @@ def _get_dihedrals_data(molecule: ob.OBMol) -> HistogramData:
     dihedrals = defaultdict(list)
     for ob_torsion in ob.OBMolTorsionIter(molecule):
         # Get the participating atoms
-        atoms = sort_atoms(
+        atoms = _sort_atoms(
             (
                 molecule.GetAtom(ob_torsion[0] + 1),
                 molecule.GetAtom(ob_torsion[1] + 1),
@@ -229,7 +232,7 @@ def _get_dihedrals_data(molecule: ob.OBMol) -> HistogramData:
         torsion_degree = molecule.GetTorsion(*atoms)
 
         # Save the information
-        dihedrals[create_dict_key(atoms)].append(torsion_degree)
+        dihedrals[_create_dict_key(atoms)].append(torsion_degree)
 
     return dihedrals
 
@@ -250,7 +253,7 @@ def _get_hbond_data(
 
     # For each proton find its bonded atoms
     # Keep only donors which neighbour atoms in the enabler set
-    donor_set = map(collect_neighbours, protons)
+    donor_set = map(_collect_neighbours, protons)
     donor_set = filter(lambda x: x.bonded_atom.GetAtomicNum() in enablers, donor_set)
 
     # Find all the acceptor atoms
@@ -260,12 +263,12 @@ def _get_hbond_data(
 
     # Find the set of all donors and acceptors, keep only those within the right distance
     d_min, d_max = hbond_distance
-    interaction_set = get_combinations(donor_set, acceptor_set)
+    interaction_set = _get_combinations(donor_set, acceptor_set)
     interaction_set = filter(lambda x: d_min < x.distance < d_max, interaction_set)
 
     # Save the good stuff
     for interaction in interaction_set:
-        key = create_dict_key((interaction.bonded_atom, interaction.acceptor))
+        key = _create_dict_key((interaction.bonded_atom, interaction.acceptor))
         hbonds[key].append(interaction.distance)
 
     return hbonds
