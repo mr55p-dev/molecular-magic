@@ -1,5 +1,5 @@
 """
-Convert a sequence OBMol objects into an equal length sequence of vectors, using dataset-wide functions
+Utilities to extract properties from molecules in a structured and repeatable way
 """
 
 from dataclasses import dataclass
