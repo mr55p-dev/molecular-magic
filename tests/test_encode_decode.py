@@ -1,3 +1,4 @@
+import argparse
 import openbabel.pybel as pb
 from magic.parser import convert_tree, read_sdf_archive
 from pathlib import Path
@@ -14,7 +15,8 @@ def test_encode():
     assert test_dir.exists()
     test_output.unlink(missing_ok=True)
 
-    convert_tree(test_dir, test_output)
+    args = argparse.Namespace(input=test_dir, output=test_output)
+    convert_tree(args)
 
     assert test_output.exists()
     assert test_output.stat().st_size > 0
@@ -30,5 +32,3 @@ def test_decode():
 
     # Check the energy can be cast to float and is negative
     assert float(first_mol.data["scf_energy"]) < 0
-
-    test_output.unlink()
