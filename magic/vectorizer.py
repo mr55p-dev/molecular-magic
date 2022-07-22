@@ -139,7 +139,7 @@ def calculate_mol_data(
 def _get_amine_counts(molecule: ob.OBMol) -> Iterator[int]:
     """Return an iterable of amine degrees present in the molecule
 
-    TODO: What are we using as the formal definition of an amine?
+    TODO: #30 What are we using as the formal definition of an amine?
     """
     # Get all the nitrogen atoms (this will include imines and nitriles)
     nitrogen_centers = [atom for atom in ob.OBMolAtomIter(molecule) if atom.GetAtomicNum() == 7]
