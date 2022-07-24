@@ -23,7 +23,7 @@ array_reversal_test_data = [
 def test_feature_extraction():
     mol = next(read_sdf_archive(Path("dft_test_files/output.sdf.bz2")))
 
-    mol_data = calculate_mol_data(mol, (-inf, inf))
+    mol_data = calculate_mol_data(mol)
 
     assert mol_data.atoms
     assert mol_data.atoms[1] > 0  # Hydrogen

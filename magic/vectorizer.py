@@ -7,10 +7,11 @@ from typing import Any, DefaultDict, Generator, Iterator, TypeVar
 from openbabel import pybel as pb
 from openbabel import openbabel as ob
 from collections import Counter, defaultdict, namedtuple
+from magic.config import extraction as cfg
 
 
 # Constants
-enablers: list[int] = [7, 8]
+enablers: list[int] = cfg["hbond-atoms"]
 
 # Types
 HistogramData = TypeVar("HistogramData", bound=DefaultDict[str, list[float]])
@@ -51,9 +52,7 @@ class MoleculeData:
     hbonds: HistogramData
 
 
-def calculate_mol_data(
-    molecule: pb.Molecule, hbond_distance: tuple[float, float]
-) -> MoleculeData:
+def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
     """Calculate a MoleculeData instance for a single molecule, using hbond criteria given in
     hbond_distance.
 
@@ -71,7 +70,7 @@ def calculate_mol_data(
     bonds = _get_bonds_data(molecule.OBMol)
     angles = _get_angles_data(molecule.OBMol)
     dihedrals = _get_dihedrals_data(molecule.OBMol)
-    hbonds = _get_hbond_data(molecule.OBMol, hbond_distance)
+    hbonds = _get_hbond_data(molecule.OBMol)
 
     return MoleculeData(atoms, amines, bonds, angles, dihedrals, hbonds)
 
@@ -237,9 +236,7 @@ def _get_dihedrals_data(molecule: ob.OBMol) -> HistogramData:
     return dihedrals
 
 
-def _get_hbond_data(
-    molecule: ob.OBMol, hbond_distance: tuple[float, float]
-) -> HistogramData:
+def _get_hbond_data(molecule: ob.OBMol) -> HistogramData:
     """Calculate all the hydrogen bond interactions between atom pairs.
     Returns a key of the form (bonded_enabler, accepting_enabler).
 
@@ -262,7 +259,8 @@ def _get_hbond_data(
     )
 
     # Find the set of all donors and acceptors, keep only those within the right distance
-    d_min, d_max = hbond_distance
+    d_min: float = cfg["hbond-min-distance"]
+    d_max: float = cfg["hbond-max-distance"]
     interaction_set = _get_combinations(donor_set, acceptor_set)
     interaction_set = filter(lambda x: d_min < x.distance < d_max, interaction_set)
 
