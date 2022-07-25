@@ -16,16 +16,20 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 ### MolMagic CLI
 - You can install the `molmagic` cli tool to make the dataset creation easier.
 - Run `pip install -e .` to install the `molmagic` script locally.
+- From a local terminal session, invoke the `molmagic` command to see allt he available subcommands
 
 ### Dataset
-- Go to: https://unow.nottingham.ac.uk/handle/internal/9356?show=full and download all dataset zip files (p1 to p7).
+- Go to the [University of Nottingham repository](https://unow.nottingham.ac.uk/handle/internal/9356?show=full) and download one or more dataset zip files (p1 to p7).
 - Create a folder called `moldata` and extract the files to this folder.
 
 ----
 
 ## Running the scripts
 ### 1. Create cleaned annotated sdf files
-- Run the script `clean.py` with its available arguments: ...
+- Run `molmagic parser -i <path_to_moldata_directory> -o <path_to_output_file>`, where `<path_to_output_file> specifys the path to a file which does not yet exist
+  - The output file you provide will be appended with the extension `.sdf.bz2`
+  - Running the command `molmagic parser -i ./moldata -o ./cleaned_data` will result in a reading all `g09` frequency files from `moldata` and writing molecular structures and energies into a `bz2` archive using the `sdf` format, `./cleaned_data.sdf.bz2`.
+
 ### 2. ...
 
 ----

@@ -87,7 +87,7 @@ def read_sdf_archive(archive_path: Path) -> Generator[pb.Molecule, None, None]:
                 yield pb.readstring(format="sdf", string=sdf_string)
 
 
-def convert_tree(args: Namespace) -> None:
+def parse_dft_tree(args: Namespace) -> None:
     """Convert all the files from basepath into filtered output in outpath
 
     Always uses the more advanced frequncy calculation
@@ -120,6 +120,8 @@ def convert_tree(args: Namespace) -> None:
 
     # Check the ouptut directory exists, and create if it does not
     outpath.parent.mkdir(parents=True, exist_ok=True)
+    if not outpath.name.endswith(".sdf.bz2"):
+        outpath = outpath.with_suffix(".sdf.bz2")
 
     # Create a compression object
     compressor = bz2.BZ2Compressor()

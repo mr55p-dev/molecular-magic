@@ -15,7 +15,7 @@ fmt:
 Depends on `cclib` and `bz2`.
 """
 from argparse import ArgumentParser
-from magic.parser import convert_tree
+from magic.parser import parse_dft_tree
 from pathlib import Path
 import sys
 
@@ -23,13 +23,16 @@ import sys
 def main(argv=sys.argv):
     base_parser = ArgumentParser()
 
+    def show_help(*args, **kwargs):
+        base_parser.print_help()
+
+    base_parser.set_defaults(func=show_help)
+
     # Create a parser option
-    subparsers = base_parser.add_subparsers(
-        title="subcommands", description="utilities defined in the module"
-    )
+    subparsers = base_parser.add_subparsers(title="subcommands")
     parser = subparsers.add_parser(
         name="parser",
-        description="""Utility for converting a directory of gaussian
+        help="""Utility for converting a directory of gaussian
         frequency files into a compressed SDF output archive (bz2 compression)
         """,
     )
@@ -52,7 +55,7 @@ def main(argv=sys.argv):
         bz2-compressed archive, which can be recovered using methods
         implemented in magic.parser""",
     )
-    parser.set_defaults(func=convert_tree)
+    parser.set_defaults(func=parse_dft_tree)
 
     args = base_parser.parse_args(argv[1:])
     args.func(args)
