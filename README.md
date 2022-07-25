@@ -20,15 +20,22 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 
 ### Dataset
 - Go to the [University of Nottingham repository](https://unow.nottingham.ac.uk/handle/internal/9356?show=full) and download one or more dataset zip files (p1 to p7).
-- Create a folder called `moldata` and extract the files to this folder.
+- Create a folder called `moldata` and extract the files to this folder
 
 ----
 
 ## Running the scripts
+
+### 0. Install the CLI tool
+- Clone this repo and install the anaconda environment with `codna env create -f environment.yml`. This downlads the correct version of python and all its dependencies.
+  - Activate the environment with `conda activate molemagic`
+- Once this is done, install the `magic` module locally using pip. Run the command `pip install -e .` to install the script endpoints in your environment.
+  - Running the command `molmagic` in your terminal should print out the help message for the tool
 ### 1. Create cleaned annotated sdf files
 - Run `molmagic parser -i <path_to_moldata_directory> -o <path_to_output_file>`, where `<path_to_output_file> specifys the path to a file which does not yet exist
   - The output file you provide will be appended with the extension `.sdf.bz2`
   - Running the command `molmagic parser -i ./moldata -o ./cleaned_data` will result in a reading all `g09` frequency files from `moldata` and writing molecular structures and energies into a `bz2` archive using the `sdf` format, `./cleaned_data.sdf.bz2`.
+- Running this command should display a progress bar, and after a short duration the command should exit, leaving behind the file specified after the `-o` flag in your command
 
 ### 2. ...
 
