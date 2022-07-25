@@ -33,6 +33,8 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
   - Running the command `molmagic` in your terminal should print out the help message for the tool
 ### 1. Create cleaned annotated sdf files
 - Run `molmagic parser -i <path_to_moldata_directory> -o <path_to_output_file>`, where `<path_to_output_file> specifys the path to a file which does not yet exist
+  - The input directory should contain frequency files for all the structures to be analysed. The parser command will walk through all subdirectories of the one specified so there is no need to unpack every file into the same directory.
+  - Note that the order in the output is not guaranteed to be the same as the input (and is not likely to be either).
   - The output file you provide will be appended with the extension `.sdf.bz2`
   - Running the command `molmagic parser -i ./moldata -o ./cleaned_data` will result in a reading all `g09` frequency files from `moldata` and writing molecular structures and energies into a `bz2` archive using the `sdf` format, `./cleaned_data.sdf.bz2`.
 - Running this command should display a progress bar, and after a short duration the command should exit, leaving behind the file specified after the `-o` flag in your command
