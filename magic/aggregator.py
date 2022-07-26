@@ -48,7 +48,7 @@ def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
     return ...
 
 
-def data_to_bin(mol_data: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+def data_to_bin(data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
 
@@ -62,9 +62,6 @@ def data_to_bin(mol_data: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
         for each molecule. These arrays are joined to a single continuous
         list for analysis
     """
-    # Flatten the molecule data
-    data = np.concatenate(mol_data).ravel()
-
     # Calculate the KDE
     kde = gaussian_kde(data, bw_method=bandwidth)
 
@@ -73,7 +70,7 @@ def data_to_bin(mol_data: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
 
     # Find the lower and upper bounds of the data to be analysed
     # note that data should be a 1-dimensional array
-    lower_bound = 0  # could also be data.min()
+    lower_bound = data.min()
     upper_bound = data.max()
 
     # Create a linear sample space from this data range
@@ -84,6 +81,7 @@ def data_to_bin(mol_data: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
     # Compute the value of the kde at each point in the sample space
     sample_values = kde.evaluate(sample_space)
 
+    # FIXME #32: There is a bug where a bin edge is created in an uncontrolled location
     # This code is lifted from the original
     # maxima occur where the surrounding values are lower than the current one
     # minima occur where the surrounding values are greater than the current one
@@ -95,11 +93,11 @@ def data_to_bin(mol_data: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
     is_minima = np.logical_and(sample_values < shift_left, sample_values < shift_right)
 
     # Compute the values at these points
-    maxima = sample_values[is_maxima]
-    minima = sample_values[is_minima]
+    maxima = sample_space[is_maxima]
+    minima = sample_space[is_minima]
 
     # Check that the number of minima and maxima is correct
-    assert len(minima) + 1 == len(maxima)
+    # assert len(minima) + 1 == len(maxima)
 
     # Minima define the boundary of bins
     # Define additional bins at -ooo and +ooo
