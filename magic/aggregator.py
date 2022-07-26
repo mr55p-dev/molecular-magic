@@ -87,6 +87,7 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     # Create a linear sample space from this data range
     # 10000 samples is the number used in MolE8
     # Some further analysis can be done to see if this is sufficient
+    # TODO: #34 Set resolution instead of fixed number of samples
     sample_space = np.linspace(lower_bound, upper_bound, 10000)
 
     # Compute the value of the kde at each point in the sample space
@@ -192,7 +193,7 @@ def compute_histogram_vectors(molecules: list[MoleculeData], feature: str) -> np
 if __name__ == "__main__":
     # Get our molecule set
     mols = read_sdf_archive(
-        Path("/Users/ellis/Documents/Dissertation/molecular-magic/test.sdf.bz2")
+        Path("/home/luke/code/molecular-magic/test.sdf.bz2")
     )
 
     # Extract the molecular properties
