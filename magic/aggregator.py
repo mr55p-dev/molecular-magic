@@ -190,10 +190,12 @@ def compute_histogram_vectors(molecules: list[MoleculeData], feature: str) -> np
 
 
 if __name__ == "__main__":
-    # Get our molecule set from somewhere
+    # Get our molecule set
     mols = read_sdf_archive(
         Path("/Users/ellis/Documents/Dissertation/molecular-magic/test.sdf.bz2")
     )
+
+    # Extract the molecular properties
     mols = list(
         tqdm(
             map(calculate_mol_data, mols),
@@ -201,6 +203,9 @@ if __name__ == "__main__":
             desc="Extracting molecular properties",
         )
     )
+
+    # Get the energy vector
+    energy_vector = np.array([i.energy for i in mols])
 
     # Get the atom count vectors
     atom_vectors = np.array(
@@ -222,12 +227,16 @@ if __name__ == "__main__":
     hist_data = np.concatenate(
         [
             compute_histogram_vectors(mols, feature)
-            for feature in tqdm(["bonds", "angles", "dihedrals", "hbonds"], leave=False, desc="Histogramming")
+            for feature in tqdm(
+                ["bonds", "angles", "dihedrals", "hbonds"],
+                leave=False,
+                desc="Histogramming",
+            )
         ],
         axis=1,
     )
 
-    data = np.concatenate((atom_vectors, amine_vectors, hist_data), axis=1)
-    np.save(Path("./test.npx"), data)
+    feature_vector = np.concatenate((atom_vectors, amine_vectors, hist_data), axis=1)
 
-    print(data.shape)
+    np.save(Path("./test"), feature_vector)
+    np.save(Path("./test_y"), energy_vector)
