@@ -2,9 +2,16 @@
 Utilities for aggregating `MoleculeData` into histograms and
 creating vectors from those histograms
 """
+from collections import defaultdict
+from functools import partial
+from itertools import zip_longest
+import itertools
+from pathlib import Path
 from typing import TypeVar, Union
 from openbabel import pybel as pb
-from magic.vectorizer import calculate_mol_data, MoleculeData
+from tqdm import tqdm
+from magic.parser import read_sdf_archive
+from magic.vectorizer import HistogramData, calculate_mol_data, MoleculeData
 from magic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
 import numpy as np
@@ -48,7 +55,7 @@ def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
     return ...
 
 
-def data_to_bin(data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def data_to_bins(data: np.ndarray) -> np.ndarray:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
 
@@ -133,18 +140,73 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     return vec
 
 
+def compute_vectors(molecules: list[MoleculeData], feature: str) -> np.array:
+    # Extract the property we want (this could be faster by accessing
+    # the object dict directly)
+    feature_data = [getattr(i, feature) for i in molecules]
+
+    # Get every key from every dict in the molecules data and select
+    # only unique ones
+    feature_types = set(i for d in feature_data for i in d)
+
+    # Extract the per-type values for each instance
+    aggregate_data: HistogramData = defaultdict(list)
+    for feature_type in tqdm(feature_types, leave=False, desc="Aggregating type data"):
+        for instance in feature_data:
+            aggregate_data[feature_type].append(instance[feature_type])
+
+    # Calcuate the bin boundaries for each type
+    type_bins = {}
+    for feature_type, values in tqdm(
+        aggregate_data.items(), leave=False, desc="Calculating bins"
+    ):
+        # Define fallback behaviour if there are fewer than N instances of a type
+        # in the dataset. For now, just ignore it
+        if len([i for j in values for i in j]) < 2:
+            continue
+        flat_values = np.concatenate(values).ravel()
+        type_bins[feature_type] = data_to_bins(flat_values)
+
+    # Go over the type bins and get the vectors for each molecule
+    bin_col_vecs = []
+    for bin_key, bin_values in tqdm(
+        type_bins.items(), leave=False, desc="Assigning bins"
+    ):
+        f = partial(assign_bin, bins=bin_values)
+        vecs = map(f, (i[bin_key] for i in feature_data))
+
+        # Append this columns data (which is a N x (M+1) vector)
+        # where N is the number of molecules and M is the number
+        # of bins
+        bin_col_vecs.append(np.stack(list(vecs)))
+
+    # Join the column vectors to get a feature matrix for all of the
+    # types within this feature
+    return np.concatenate(bin_col_vecs, axis=1)
+
+
+
 if __name__ == "__main__":
     # Get our molecule set from somewhere
-    mols: list[MoleculeData] = ...
+    mols = read_sdf_archive(
+        Path("/Users/ellis/Documents/Dissertation/molecular-magic/test.sdf.bz2")
+    )
+    mols = list(map(calculate_mol_data, mols))
 
-    # Example for bonds
+    # Get the histogam vectors
+    hist_data = np.concatenate(
+        [
+            compute_vectors(mols, feature)
+            for feature in tqdm(["bonds", "angles", "dihedrals", "hbonds"])
+        ],
+        axis=1,
+    )
 
-    # Compute bins
-    bond_bins = data_to_bin([i.bonds for i in mols])
-    angle_bins = data_to_bin([i.angles for i in mols])
-    dihedral_bins = data_to_bin([i.dihedrals for i in mols])
-    
 
-    # Create a bond vector for each molecule
-    for mol in mols:
-        bond_vec = assign_bin(mol.bonds, bond_bins)
+
+    atom_count_vector = np.array()
+
+
+
+
+    print(data.shape)
