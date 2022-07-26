@@ -4,4 +4,4 @@ extraction:
   exclude-imines: false
   hbond-atoms: [7, 8]
 aggregation:
-  kde-bandwidth: 1.0
+  kde-bandwidth: 0.3
