@@ -81,30 +81,37 @@ def data_to_bin(data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     # Compute the value of the kde at each point in the sample space
     sample_values = kde.evaluate(sample_space)
 
-    # FIXME #32: There is a bug where a bin edge is created in an uncontrolled location
-    # This code is lifted from the original
-    # maxima occur where the surrounding values are lower than the current one
-    # minima occur where the surrounding values are greater than the current one
-    shift_left = np.roll(sample_values, -1)
-    shift_right = np.roll(sample_values, 1)
+    # Find the minima
+    """
+    [0, 1, 2, 3, 4, 5, 6, 7] <= shifted left
+       [0, 1, 2, 3, 4, 5, 6, 7] <= original
+          [0, 1, 2, 3, 4, 5, 6, 7] <= shifted right
 
-    # Compute the location of stationary points
-    is_maxima = np.logical_and(sample_values > shift_left, sample_values > shift_right)
-    is_minima = np.logical_and(sample_values < shift_left, sample_values < shift_right)
+    [2, 3, 4, 5, 6, 7] <= truncated left
+    [1, 2, 3, 4, 5, 6] <= truncated original
+    [0, 1, 2, 3, 4, 5] <= truncated right
+
+    At a minima, original is less than left and right
+    """
+
+    minima_left = sample_values[1:-1] < sample_values[2:]
+    minima_right = sample_values[1:-1] < sample_values[:-2]
+
+    # Minima are where the sample is smaller than left and right shifted values
+    # is_maxima = np.logical_and(sample_values > shift_left, sample_values > shift_right)
+    is_minima = np.logical_and(minima_left, minima_right)
 
     # Compute the values at these points
-    maxima = sample_space[is_maxima]
-    minima = sample_space[is_minima]
-
-    # Check that the number of minima and maxima is correct
-    # assert len(minima) + 1 == len(maxima)
+    minima = sample_space[1:-1][is_minima]
 
     # Minima define the boundary of bins
-    # Define additional bins at -ooo and +ooo
+    # Define additional bins at the lower and upper bounds of the data (optional)
     # Ensure the bins are monotonic and increasing
-    bins = sorted(minima)
+    bins = np.concatenate(
+        (np.expand_dims(lower_bound, 0), minima, np.expand_dims(upper_bound, 0))
+    )
 
-    return bins, maxima
+    return bins
 
 
 def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
