@@ -2,7 +2,7 @@ from collections import defaultdict
 from itertools import islice
 from math import inf
 from pathlib import Path
-from magic.aggregator import assign_bin, data_to_bin
+from magic.aggregator import assign_bin, data_to_bins
 from magic.vectorizer import calculate_mol_data, _should_reverse
 from magic.parser import read_sdf_archive
 import pytest
@@ -59,5 +59,11 @@ def test_bin_generation():
     # . .       . . . . .
     # 0 1 2 3 4 5 6 7 8 9
     data = np.array([0, 1, 1, 1, 5, 5, 5, 5, 5, 6, 6, 7, 7, 8, 8, 8, 9])
-    bins = data_to_bin(data)
+    bins = data_to_bins(data)
     assert len(bins) == 4
+
+    instance = np.array([-1, 2.5, 5, 7, 15])
+    truth = np.ones((len(bins) + 1))
+
+    predicted = assign_bin(instance, bins)
+    assert (predicted == truth).all()

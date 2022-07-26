@@ -64,10 +64,14 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     on the location of minima in the dataset. Finally, assign each point
     in data to one of the computed bins.
 
-    mol_data: list[ndarray]
-        List of 1-dimensional numpy arrays corresponding to one array
-        for each molecule. These arrays are joined to a single continuous
-        list for analysis
+    ::args::
+        mol_data: list[ndarray]
+            List of 1-dimensional numpy arrays corresponding to one array
+            for each molecule. These arrays are joined to a single continuous
+            list for analysis
+    ::returns::
+        bins: ndarray
+            The boundaries of the histogram bins
     """
     # Calculate the KDE
     kde = gaussian_kde(data, bw_method=bandwidth)
@@ -140,7 +144,7 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     return vec
 
 
-def compute_vectors(molecules: list[MoleculeData], feature: str) -> np.array:
+def compute_histogram_vectors(molecules: list[MoleculeData], feature: str) -> np.array:
     # Extract the property we want (this could be faster by accessing
     # the object dict directly)
     feature_data = [getattr(i, feature) for i in molecules]
@@ -185,28 +189,45 @@ def compute_vectors(molecules: list[MoleculeData], feature: str) -> np.array:
     return np.concatenate(bin_col_vecs, axis=1)
 
 
-
 if __name__ == "__main__":
     # Get our molecule set from somewhere
     mols = read_sdf_archive(
         Path("/Users/ellis/Documents/Dissertation/molecular-magic/test.sdf.bz2")
     )
-    mols = list(map(calculate_mol_data, mols))
+    mols = list(
+        tqdm(
+            map(calculate_mol_data, mols),
+            leave=False,
+            desc="Extracting molecular properties",
+        )
+    )
+
+    # Get the atom count vectors
+    atom_vectors = np.array(
+        [
+            [i.atoms[atom] for i in mols]
+            for atom in (1, 6, 7, 8)  # For hydrogen carbon, nitrogen, oxygen
+        ]
+    ).T
+
+    # Get the amine count vectors
+    amine_vectors = np.array(
+        [
+            [i.amines[amine] for i in mols]
+            for amine in (1, 2, 3)  # For degree 1, 2, 3 amines
+        ]
+    ).T
 
     # Get the histogam vectors
     hist_data = np.concatenate(
         [
-            compute_vectors(mols, feature)
-            for feature in tqdm(["bonds", "angles", "dihedrals", "hbonds"])
+            compute_histogram_vectors(mols, feature)
+            for feature in tqdm(["bonds", "angles", "dihedrals", "hbonds"], leave=False, desc="Histogramming")
         ],
         axis=1,
     )
 
-
-
-    atom_count_vector = np.array()
-
-
-
+    data = np.concatenate((atom_vectors, amine_vectors, hist_data), axis=1)
+    np.save(Path("./test.npx"), data)
 
     print(data.shape)

@@ -41,6 +41,9 @@ class HBondInteraction:
 # @dataclass(eq=False, slots=True)
 @dataclass(eq=False)
 class MoleculeData:
+    # Intrinsic properties
+    energy: float
+
     # Properties which are just simple counts
     atoms: Counter
     amines: Counter
@@ -62,6 +65,9 @@ def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
         Tuple containing the lower- and upper-bounds of allowed distances in hydrogen-bonding
         interactions.
     """
+    # Get the energy out of the openbabel representation
+    energy = molecule.data["scf_energy"]
+
     # Get the counts of different atoms straight off
     atoms = Counter([i.atomicnum for i in molecule.atoms])
     amines = Counter(_get_amine_counts(molecule.OBMol))
@@ -72,7 +78,7 @@ def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
     dihedrals = _get_dihedrals_data(molecule.OBMol)
     hbonds = _get_hbond_data(molecule.OBMol)
 
-    return MoleculeData(atoms, amines, bonds, angles, dihedrals, hbonds)
+    return MoleculeData(energy, atoms, amines, bonds, angles, dihedrals, hbonds)
 
 
 # Util functions
