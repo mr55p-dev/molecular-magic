@@ -208,9 +208,9 @@ def _get_angles_data(molecule: ob.OBMol) -> HistogramData:
         # Check if the center atom is a carbon
         if (c_atom := atoms[1]).GetAtomicNum() == 6:
             # Tack the total valence onto the end as a special requirement
-            # FIXME: #33 GetTotalValence does not return the property expected
-            # see the code around amines for more info
-            key = (*key, c_atom.GetTotalValence())
+            # Count the number of bonds with orders 1, 2 and 3 and sum them
+            n_bonds = sum(c_atom.CountBondsOfOrder(i) for i in range(1, 4))
+            key = (*key, n_bonds)
         else:
             # If we are not dealing with carbon set valence = 0
             key = (*key, 0)
