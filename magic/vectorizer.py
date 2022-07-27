@@ -143,7 +143,9 @@ def _proton_is_enabled(proton: pb.Atom, enablers: tuple[int]) -> bool:
 def _get_amine_counts(molecule: ob.OBMol) -> Iterator[int]:
     """Return an iterable of amine degrees present in the molecule
 
-    TODO: #30 What are we using as the formal definition of an amine?
+    Currently the definition of an amine is strict - it requires a nitrogen
+    with 3 single covalent bonds. There is no detection of further functionalisation
+    and so amides will be identified as pure amines.
     """
     # Get all the nitrogen atoms (this will include imines and nitriles)
     nitrogen_centers = [
