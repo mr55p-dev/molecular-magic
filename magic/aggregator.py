@@ -4,11 +4,8 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
-from itertools import zip_longest
-import itertools
 from pathlib import Path
-from typing import TypeVar, Union
-from openbabel import pybel as pb
+from typing import TypeVar
 from tqdm import tqdm
 from magic.parser import read_sdf_archive
 from magic.vectorizer import HistogramData, calculate_mol_data, MoleculeData
@@ -17,9 +14,9 @@ from scipy.stats import gaussian_kde
 import numpy as np
 
 
+# Get config vars
 bandwidth = cfg["kde-bandwidth"]
 resolution = cfg["resolution"]
-KDE = TypeVar("KDE")
 
 
 def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
@@ -146,7 +143,33 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     return vec
 
 
-def compute_histogram_vectors(molecules: list[MoleculeData], feature: str) -> np.array:
+def compute_histogram_vectors(
+    molecules: list[MoleculeData], feature: str
+) -> np.ndarray:
+    """Takes a dataset of molecules and a property to calculate and computes
+    histograms for every type of interaction (ie for bonds CC, CH) and then
+    bins every instance of each type in the dataset into a fixed-length vector
+    determined by the number of bins on each histogram for the property.
+
+    ::args::
+        molecules: list[MoleculeData]
+            Dataset of molecules with data extracted into the MoleculeData class
+        feature: str
+            Method of MoleculeData which points to a defaultdict where each key is a
+            type of the feature (ie CC, CH for bonds) and each value is a list of
+            values for that feature in the molecule
+    ::returns::
+        vector: np.ndarray
+            NxM vector where N is the number of instances in the molecules argument
+            and M is determined by the number of features extracted and number of bins
+            for each feature extracted.
+            ie if we are looking at bonds, if the dataset contains CC, CH and CN bonds
+            there will be a histogram created for each of these. From the minima of the
+            KDE calculated for that histogram, there will be n+1 bins, where n is the
+            number of minima. So the size of M in the returned vector will be
+            n_bins_CC + n_bins_CH + n_bins_CN, where each of those values are determined
+            from the dataset itself.
+    """
     # Extract the property we want (this could be faster by accessing
     # the object dict directly)
     feature_data = [getattr(i, feature) for i in molecules]
@@ -193,9 +216,7 @@ def compute_histogram_vectors(molecules: list[MoleculeData], feature: str) -> np
 
 if __name__ == "__main__":
     # Get our molecule set
-    mols = read_sdf_archive(
-        Path("./test.sdf.bz2")
-    )
+    mols = read_sdf_archive(Path("./test.sdf.bz2"))
 
     # Extract the molecular properties
     mols = list(
