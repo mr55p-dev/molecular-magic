@@ -4,14 +4,11 @@ SDF file.
 
 Requires cclib and bz2 to be installed
 """
-from argparse import Namespace
 from pathlib import Path
 from typing import Generator
 import openbabel.pybel as pb
 import cclib
 import bz2
-from tqdm import tqdm
-from magic.rules import filter_mols
 
 
 def check_convergence(path: Path) -> bool:
@@ -85,59 +82,3 @@ def read_sdf_archive(archive_path: Path) -> Generator[pb.Molecule, None, None]:
 
                 # Construct an pb.Molecule
                 yield pb.readstring(format="sdf", string=sdf_string)
-
-
-def parse_dft_tree(args: Namespace) -> None:
-    """Convert all the files from basepath into filtered output in outpath
-
-    Always uses the more advanced frequncy calculation
-
-    There is an error between converged frequency and geometry files,
-    with a cumulative value of: ~0.004eV on the entire part1 dataset.
-    This can be considered neglegable.
-
-    basepath:
-        Directory containing all the files with specified format
-    outpath:
-        Directory to write all the output files to
-    fmt:
-        File format of the output
-    """
-
-    basepath = args.input
-    outpath = args.output
-    fmt = 'sdf'
-
-    # Walk the basepath directory and discover all the
-    # g09 formatted output files
-    matched_paths = list(basepath.glob("./**/*f.out"))
-
-    # Read those files and extract geometries and scf energies
-    mol = map(read_dft_frequency, matched_paths)
-
-    # Filter this list to remove any bad objects
-    mol_subset = filter(filter_mols, mol)
-
-    # Check the ouptut directory exists, and create if it does not
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    if not outpath.name.endswith(".sdf.bz2"):
-        outpath = outpath.with_suffix(".sdf.bz2")
-
-    # Create a compression object
-    compressor = bz2.BZ2Compressor()
-
-    # Write appropriate objects into outpath under the same filename
-    with outpath.open("wb") as buffer:
-        # Iterate the molecules
-        for mol in tqdm(mol_subset, total=len(matched_paths)):
-            # Pybel returns a string if no output file is provided
-            raw_output: str = mol.write(format=fmt)
-            # Encode the string to utf8 bytes
-            bytes_output = raw_output.encode("utf-8")
-            # Compress those bytes
-            compressed_output = compressor.compress(bytes_output)
-            # Stream them into the output file
-            buffer.write(compressed_output)
-
-        # Make sure nothing gets left behind in the compressor
-        buffer.write(compressor.flush())

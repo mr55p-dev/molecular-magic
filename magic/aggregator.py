@@ -4,11 +4,8 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
-from pathlib import Path
-from typing import TypeVar
 from tqdm import tqdm
-from magic.parser import read_sdf_archive
-from magic.vectorizer import HistogramData, calculate_mol_data, MoleculeData
+from magic.vectorizer import HistogramData, MoleculeData
 from magic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
 import numpy as np
@@ -212,54 +209,3 @@ def compute_histogram_vectors(
     # Join the column vectors to get a feature matrix for all of the
     # types within this feature
     return np.concatenate(bin_col_vecs, axis=1)
-
-
-if __name__ == "__main__":
-    # Get our molecule set
-    mols = read_sdf_archive(Path("./test.sdf.bz2"))
-
-    # Extract the molecular properties
-    mols = list(
-        tqdm(
-            map(calculate_mol_data, mols),
-            leave=False,
-            desc="Extracting molecular properties",
-        )
-    )
-
-    # Get the energy vector
-    energy_vector = np.array([i.energy for i in mols])
-
-    # Get the atom count vectors
-    atom_vectors = np.array(
-        [
-            [i.atoms[atom] for i in mols]
-            for atom in (1, 6, 7, 8)  # For hydrogen carbon, nitrogen, oxygen
-        ]
-    ).T
-
-    # Get the amine count vectors
-    amine_vectors = np.array(
-        [
-            [i.amines[amine] for i in mols]
-            for amine in (1, 2, 3)  # For degree 1, 2, 3 amines
-        ]
-    ).T
-
-    # Get the histogam vectors
-    hist_data = np.concatenate(
-        [
-            compute_histogram_vectors(mols, feature)
-            for feature in tqdm(
-                ["bonds", "angles", "dihedrals", "hbonds"],
-                leave=False,
-                desc="Histogramming",
-            )
-        ],
-        axis=1,
-    )
-
-    feature_vector = np.concatenate((atom_vectors, amine_vectors, hist_data), axis=1)
-
-    np.save(Path("./test"), feature_vector)
-    np.save(Path("./test_y"), energy_vector)

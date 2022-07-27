@@ -10,9 +10,6 @@ from collections import Counter, defaultdict, namedtuple
 from magic.config import extraction as cfg
 
 
-# Constants
-enablers: list[int] = cfg["hbond-atoms"]
-
 # Types
 HistogramData = TypeVar("HistogramData", bound=DefaultDict[str, list[float]])
 DonorPair = namedtuple("DonorPair", ["proton", "bonded_atom"])
@@ -42,7 +39,7 @@ class HBondInteraction:
 @dataclass(eq=False)
 class MoleculeData:
     # Intrinsic properties
-    energy: float
+    attributes: dict
 
     # Properties which are just simple counts
     atoms: Counter
@@ -65,9 +62,6 @@ def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
         Tuple containing the lower- and upper-bounds of allowed distances in hydrogen-bonding
         interactions.
     """
-    # Get the energy out of the openbabel representation
-    energy = molecule.data["scf_energy"]
-
     # Get the counts of different atoms straight off
     atoms = Counter([i.atomicnum for i in molecule.atoms])
     amines = Counter(_get_amine_counts(molecule.OBMol))
@@ -78,7 +72,8 @@ def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
     dihedrals = _get_dihedrals_data(molecule.OBMol)
     hbonds = _get_hbond_data(molecule.OBMol)
 
-    return MoleculeData(energy, atoms, amines, bonds, angles, dihedrals, hbonds)
+    # Copy the SDF attributes into MoleculeData
+    return MoleculeData(molecule.data, atoms, amines, bonds, angles, dihedrals, hbonds)
 
 
 # Util functions
@@ -261,11 +256,11 @@ def _get_hbond_data(molecule: ob.OBMol) -> HistogramData:
     # For each proton find its bonded atoms
     # Keep only donors which neighbour atoms in the enabler set
     donor_set = map(_collect_neighbours, protons)
-    donor_set = filter(lambda x: x.bonded_atom.GetAtomicNum() in enablers, donor_set)
+    donor_set = filter(lambda x: x.bonded_atom.GetAtomicNum() in cfg["hbond-atoms"], donor_set)
 
     # Find all the acceptor atoms
     acceptor_set = list(
-        filter(lambda x: x.GetAtomicNum() in enablers, ob.OBMolAtomIter(molecule))
+        filter(lambda x: x.GetAtomicNum() in cfg["hbond-atoms"], ob.OBMolAtomIter(molecule))
     )
 
     # Find the set of all donors and acceptors, keep only those within the right distance
