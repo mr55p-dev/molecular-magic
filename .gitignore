@@ -146,3 +146,8 @@ logs/
 
 # Weights and biases
 wandb/
+
+# Test data
+test/
+dft_test_files/
+moldata/
