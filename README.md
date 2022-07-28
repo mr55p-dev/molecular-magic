@@ -39,7 +39,9 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
   - Running the command `molmagic parser -i ./moldata -o ./cleaned_data` will result in a reading all `g09` frequency files from `moldata` and writing molecular structures and energies into a `bz2` archive using the `sdf` format, `./cleaned_data.sdf.bz2`.
 - Running this command should display a progress bar, and after a short duration the command should exit, leaving behind the file specified after the `-o` flag in your command
 
-### 2. ...
+### 2. Convert the structure archive into vectors
+- The utility `molmagic vectorizer` can be used to convert a `.sdf.bz2` archive into saved numpy vectors (`.npx` files). Run `molmagic vectorizer -h` to see the required arguments.
+- The syntax is the same as for the parser; use the `-i` flag to specify the input file (in this case it should be `path/to/output/of/parser.sdf.bz2`) and the `-o` flag to specify a directory. This directory will be created if it does not exist. There will be two new files created in that directory specified, `features.npy` and `labels.npy`. Labels will be extracted based on the **sdf key** speficied in `config.yml`.
 
 ----
 
