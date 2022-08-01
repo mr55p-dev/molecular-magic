@@ -151,3 +151,7 @@ wandb/
 test/
 dft_test_files/
 moldata/
+cleaned_data.sdf.bz2
+test_y.npy
+test.npy
+test.sdf.bz2
