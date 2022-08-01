@@ -4,9 +4,13 @@ Working repository for the rewriting of the code in: https://github.com/sanha021
 
 Work is performed as part of the University of Nottingham Machine Learning in Science MSc project of Luke Rawlence and Ellis Lunnon.
 ****
+</br>
+
 # MolE8 Reimplementation
 
-## Setup
+
+
+<!-- ## Setup
 
 ### Virtual Environment
 - Run `conda env create -f environment.yml` to setup the environment.
@@ -19,42 +23,54 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 - From a local terminal session, invoke the `molmagic` command to see allt he available subcommands
 
 ### Dataset
-- Go to the [University of Nottingham repository](https://unow.nottingham.ac.uk/handle/internal/9356?show=full) and download one or more dataset zip files (p1 to p7).
-- Create a folder called `moldata` and extract the files to this folder
+- Go to the  and download one or more dataset zip files (p1 to p7).
+- Create a folder called `moldata` and extract the files to this folder -->
 
-----
+<!-- ---- -->
 
-## Running the scripts
+## How to run the code
 
-### 0. Install the CLI tool
-- Clone this repo and install the anaconda environment with `codna env create -f environment.yml`. This downlads the correct version of python and all its dependencies.
+### 0. Set up the environment
+- Clone this repo and install the anaconda environment with `conda env create -f environment.yml`. This downlads the correct version of python and all its dependencies.
   - Activate the environment with `conda activate molemagic`
 - Once this is done, install the `magic` module locally using pip. Run the command `pip install -e .` to install the script endpoints in your environment.
   - Running the command `molmagic` in your terminal should print out the help message for the tool
+- Download the dataset zip files from the [University of Nottingham repository](https://unow.nottingham.ac.uk/handle/internal/9356?show=full).
+  - Create a folder called `moldata` in the repo folder and extract the files there.
 ### 1. Create cleaned annotated sdf files
-- Run `molmagic parser -i <path_to_moldata_directory> -o <path_to_output_file>`, where `<path_to_output_file> specifys the path to a file which does not yet exist
+- Run `molmagic parser -i <path_to_moldata_directory> -o <path_to_output_file>`, where `<path_to_output_file> specifies the path to a file which does not yet exist.
   - The input directory should contain frequency files for all the structures to be analysed. The parser command will walk through all subdirectories of the one specified so there is no need to unpack every file into the same directory.
   - Note that the order in the output is not guaranteed to be the same as the input (and is not likely to be either).
-  - The output file you provide will be appended with the extension `.sdf.bz2`
+  - The output file you provide will be appended with the extension `.sdf.bz2`.
   - Running the command `molmagic parser -i ./moldata -o ./cleaned_data` will result in a reading all `g09` frequency files from `moldata` and writing molecular structures and energies into a `bz2` archive using the `sdf` format, `./cleaned_data.sdf.bz2`.
-- Running this command should display a progress bar, and after a short duration the command should exit, leaving behind the file specified after the `-o` flag in your command
+- Running this command should display a progress bar, and after a short duration the command should exit, leaving behind the file specified after the `-o` flag in your command.
 
-### 2. ...
+### 2. Generate npy feature vectors
+- Run `molmagic vectorizer -i <path_to_cleaned_annotated_sdf_file> -o <path_to_feature_vector_files>`, where <path_to_feature_vector_files> specifies a file which does not yet exist.
+  - (information about command)
+
+### 3. Machine Learning Code...
 
 ----
+</br>
 
 ## Additional Information
-### `molmagic` usage
+<!-- ### `molmagic` usage
 - Run `molmagic -h` for a list of subcommands.
-- The database cleaning can be invoked with `molmagic parser -i <input directory> -o <output archive>`.
+- The database cleaning can be invoked with `molmagic parser -i <input directory> -o <output archive>`. -->
+### Error messages
+- The following Openbabel error messages can be ignored: 
+  - `Failed to kekulize aromatic bonds in OBMol::PerceiveBondOrders`
+  - `Failed to set stereochemistry as unable to find an available bond`
 
-### Tests
-- Tests can be run with pytest (`python3 -m pytest`).
+<!-- ### Tests
+- Tests can be run with pytest (`python3 -m pytest`). -->
 
 ### Weights and biases
 - Weights and biases is used to record experiments. In order to perform and track an experimient, please sign into weights and biases locally (see [documentation](https://docs.wandb.ai/)).
 The workspace which contains runs and information is hosted [here](https://wandb.ai/molecular-magicians/MolecularMagic).
 
+</br></br></br>
 
 # Legacy code
 ## Script Information

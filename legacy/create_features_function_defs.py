@@ -231,6 +231,7 @@ def FindKDEMax(distribution_data, distribution_type, location: Path, name, kde_w
     location.mkdir(parents=True, exist_ok=True)
 
     plt.legend()
+    plt.show()
     plt.savefig(location / (name + "_kde_plot" + ".png"), format="png", dpi=500)
     plt.close()
 
