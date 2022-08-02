@@ -148,10 +148,7 @@ logs/
 wandb/
 
 # Test data
-test/
-dft_test_files/
 moldata/
 cleaned_data.sdf.bz2
-test_y.npy
-test.npy
-test.sdf.bz2
+auto_bandwidth_features/
+manual_bandwidth_features/

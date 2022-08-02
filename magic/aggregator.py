@@ -71,7 +71,7 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     # Calculate the KDE
     kde = gaussian_kde(data)
 
-    # Original method samples the kde and computes derrivitaves
+    # Original method samples the kde and computes derivatives
     # There is an option to use the MeanShift algorithm instead
 
     # Find the lower and upper bounds of the data to be analysed
@@ -135,7 +135,9 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # This is slow find a better way
     for bin_idx in binned:
         vec[bin_idx] += 1
-
+    
+    # TO-DO: This may be able to be improved using counter or list comprehension
+    
     return vec
 
 
