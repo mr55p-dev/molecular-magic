@@ -52,8 +52,9 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
     # TODO: #25 Check openbabel has worked its magic
     assert mol is not None
 
-    # Convert the energy reported from eV to Hartrees (as per original spec)
-    scf_energy = scf_ev * 0.036749322176
+    # Unit conversions from http://wild.life.nctu.edu.tw/class/common/energy-unit-conv-table.html
+    # Convert the energy reported from eV to Kcal mol^-1 (as per original spec)
+    scf_energy = scf_ev * 23.0609
 
     # Set the converged energy as an attribute on the OBMol object
     mol.data.update({"scf_energy": scf_energy})

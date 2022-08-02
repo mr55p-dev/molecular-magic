@@ -69,9 +69,9 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
             The boundaries of the histogram bins
     """
     # Calculate the KDE
-    kde = gaussian_kde(data, bw_method=bandwidth)
+    kde = gaussian_kde(data)
 
-    # Original method samples the kde and computes derrivitaves
+    # Original method samples the kde and computes derivatives
     # There is an option to use the MeanShift algorithm instead
 
     # Find the lower and upper bounds of the data to be analysed
@@ -79,11 +79,10 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     lower_bound = data.min()
     upper_bound = data.max()
 
-    # Create a linear sample space from this data range
+    # Create a uniformly spaced set of samples between the minimum and maximum datapoint
     # 10000 samples is the number used in MolE8
     # Some further analysis can be done to see if this is sufficient
-    n_samples = int(resolution * (upper_bound - lower_bound))
-    sample_space = np.linspace(lower_bound, upper_bound, n_samples)
+    sample_space = np.linspace(lower_bound, upper_bound, resolution)
 
     # Compute the value of the kde at each point in the sample space
     sample_values = kde.evaluate(sample_space)
@@ -109,14 +108,13 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     is_minima = np.logical_and(minima_left, minima_right)
 
     # Compute the values at these points
-    minima = sample_space[1:-1][is_minima]
+    bins = sample_space[1:-1][is_minima]
 
     # Minima define the boundary of bins
     # Define additional bins at the lower and upper bounds of the data (optional)
     # Ensure the bins are monotonic and increasing
-    bins = np.concatenate(
-        (np.expand_dims(lower_bound, 0), minima, np.expand_dims(upper_bound, 0))
-    )
+    if not bins:
+        bins = [-np.inf, np.inf]
 
     return bins
 
@@ -136,7 +134,9 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # This is slow find a better way
     for bin_idx in binned:
         vec[bin_idx] += 1
-
+    
+    # TO-DO: This may be able to be improved using counter or list comprehension
+    
     return vec
 
 
