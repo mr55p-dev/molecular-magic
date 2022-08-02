@@ -37,14 +37,14 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 batch_size = 64
 epochs = 500
-lr = 1e-5
+# lr = 1e-5
 
 # Define learning rate schedule
-# lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-#     boundaries=[579 * 20, 443 * 40, 443 * 400, 443 * 1600, 443 * 2800],
-#     values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7],
-#     name=None,
-# )
+lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+    boundaries=[579 * 20, 579 * 100, 579 * 400],
+    values=[1e-3, 1e-4, 1e-5, 1e-6],
+    name="lr_decay",
+)
 
 # Build the model
 def objective(trial: op.Trial):
@@ -54,7 +54,7 @@ def objective(trial: op.Trial):
     model.add(keras.layers.Input(shape=(len(X[0]))))
     for i in range(trial.suggest_int("num_layers", 1, 3)):
         model.add(keras.layers.Dense(
-            units=trial.suggest_categorical(f"l{i}_dims", [16, 64]),
+            units=trial.suggest_categorical(f"l{i}_dims", [16, 64, 128]),
             activation="relu")
             )
     model.add(keras.layers.Dense(units=1, activation="linear"))
@@ -65,7 +65,7 @@ def objective(trial: op.Trial):
     print("Defined model")
     print(model.summary())
 
-    optimizer = keras.optimizers.Adam(learning_rate=lr)
+    optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
     loss_function = keras.losses.MeanSquaredError()
 
     model.compile(
@@ -148,7 +148,7 @@ study = op.create_study(
 # Run the optimization
 study.optimize(
     objective,
-    n_trials=12,
+    # n_trials=12,
 )
 
 # TO-DO: Get rid of timestamp command line output
