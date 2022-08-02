@@ -113,9 +113,8 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     # Minima define the boundary of bins
     # Define additional bins at the lower and upper bounds of the data (optional)
     # Ensure the bins are monotonic and increasing
-    # bins = np.concatenate(
-    #     (np.expand_dims(lower_bound, 0), minima, np.expand_dims(upper_bound, 0))
-    # )
+    if not bins:
+        bins = [-np.inf, np.inf]
 
     return bins
 
