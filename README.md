@@ -47,8 +47,8 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 
 ### 2. Generate npy feature vectors
 - Run `molmagic vectorizer -i <path_to_cleaned_annotated_sdf_file> -o <path_to_feature_vector_files>`, where <path_to_feature_vector_files> specifies a file which does not yet exist.
-  - (information about command)
-
+- The utility `molmagic vectorizer` can be used to convert a `.sdf.bz2` archive into saved numpy vectors (`.npx` files). Run `molmagic vectorizer -h` to see the required arguments.
+- The syntax is the same as for the parser; use the `-i` flag to specify the input file (in this case it should be `path/to/output/of/parser.sdf.bz2`) and the `-o` flag to specify a directory. This directory will be created if it does not exist. There will be two new files created in that directory specified, `features.npy` and `labels.npy`. Labels will be extracted based on the **sdf key** speficied in `config.yml`.
 ### 3. Machine Learning Code...
 
 ----
