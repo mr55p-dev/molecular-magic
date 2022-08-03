@@ -1,4 +1,3 @@
-from cmath import exp
 from magic.split import stoichiometric_split
 import numpy as np
 
