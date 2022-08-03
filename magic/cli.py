@@ -137,6 +137,11 @@ def aggregate(args: Namespace) -> None:
     np.save(args.output / "features", feature_vector)
     np.save(args.output / "labels", target_vector)
 
+    print(
+        f"""Generated a feature matrix with {feature_vector.shape[0]} instances
+        and {feature_vector.shape[1]} features."""
+    )
+
 
 def main(argv=sys.argv):
     base_parser = ArgumentParser()
