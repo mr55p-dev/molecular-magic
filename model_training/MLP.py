@@ -27,7 +27,7 @@ gpus = tf.config.list_logical_devices("GPU")
 X = np.load("/home/luke/code/molecular-magic/auto_bandwidth_features/features.npy")
 y = np.load("/home/luke/code/molecular-magic/auto_bandwidth_features/labels.npy").astype(np.double)
 
-# TO-DO: Incorperate MolE8 train test split logic
+# TODO: #38 Incorperate MolE8 train test split logic
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=random_seed)
 
