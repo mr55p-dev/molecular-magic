@@ -57,7 +57,7 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
     scf_energy = scf_ev * 23.0609
 
     # Convert hartree / particle to kcal / mol
-    free_energy = ccdata.freeenergy * ...
+    free_energy = ccdata.freeenergy * 627.503
 
     # Set the converged energy as an attribute on the OBMol object
     mol.data.update(
