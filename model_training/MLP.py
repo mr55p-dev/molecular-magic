@@ -15,6 +15,7 @@ from datetime import datetime
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
 from wandb.keras import WandbCallback
+from magic.split import stoichiometric_split
 
 random_seed = 50
 tf.random.set_seed(random_seed)
@@ -24,12 +25,17 @@ gpus = tf.config.list_logical_devices("GPU")
 # Dataset                                         #
 ###################################################
 
-X = np.load("/home/luke/code/molecular-magic/auto_bandwidth_features/features.npy")
-y = np.load("/home/luke/code/molecular-magic/auto_bandwidth_features/labels.npy").astype(np.double)
+X = np.load("./auto_bandwidth_features/features.npy")
+y = np.load("./auto_bandwidth_features/labels.npy").astype(np.double)
 
-# TO-DO: Incorperate MolE8 train test split logic
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=random_seed)
+# Use the MolE8 train_test_split logic
+X_train, X_test, y_train, y_test = stoichiometric_split(
+    X, y, random_state=random_seed
+)
+
+# Use standard train_test_split logic
+# X_train, X_test, y_train, y_test = train_test_split(
+#     X, y, test_size=0.2, random_state=random_seed)
 
 ###################################################
 # Experimental setup                              #
