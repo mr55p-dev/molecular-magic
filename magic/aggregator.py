@@ -4,7 +4,9 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
+from typing import Callable
 from tqdm import tqdm
+from magic.graphing import plot_histogram
 from magic.vectorizer import HistogramData, MoleculeData
 from magic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
@@ -50,7 +52,9 @@ def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
     return ...
 
 
-def data_to_bins(data: np.ndarray) -> np.ndarray:
+def data_to_bins(
+    data: np.ndarray, graphing_callback: Callable = None, name: str = None
+) -> np.ndarray:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
 
@@ -116,6 +120,9 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     if bins.shape[0] == 0:
         bins = [-np.inf, np.inf]
 
+    if graphing_callback:
+        graphing_callback(data, (sample_space, sample_values), bins, name)
+
     return bins
 
 
@@ -134,9 +141,9 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # This is slow find a better way
     for bin_idx in binned:
         vec[bin_idx] += 1
-    
+
     # TO-DO: This may be able to be improved using counter or list comprehension
-    
+
     return vec
 
 
@@ -191,7 +198,12 @@ def compute_histogram_vectors(
         if len([i for j in values for i in j]) < 2:
             continue
         flat_values = np.concatenate(values).ravel()
-        type_bins[feature_type] = data_to_bins(flat_values)
+        element_map = {1: "H", 6: "C", 7: "N", 8: "O"}
+        type_bins[feature_type] = data_to_bins(
+            flat_values,
+            plot_histogram,
+            name="-".join(map(lambda x: element_map[x], feature_type)),
+        )
 
     # Go over the type bins and get the vectors for each molecule
     bin_col_vecs = []
