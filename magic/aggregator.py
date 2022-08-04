@@ -199,6 +199,7 @@ def compute_histogram_vectors(
             continue
         flat_values = np.concatenate(values).ravel()
         element_map = {1: "H", 6: "C", 7: "N", 8: "O"}
+        # TODO: #45 Use the feature name to get a more accurate plot name
         type_bins[feature_type] = data_to_bins(
             flat_values,
             plot_histogram,
