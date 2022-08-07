@@ -187,14 +187,16 @@ def _get_angles_data(molecule: ob.OBMol) -> HistogramData:
     for ob_angle in ob.OBMolAngleIter(molecule):
         # Need to include center-carbon valence here too
         # Get the participating atoms
-        # ob_angle contains an array of atom indices (shifted by 1
-        # for some reason)
+        # ob_angle contains an array of atom indices
+        # Internal representation is strange and this iterator
+        # returns indexed from 0, whereas GetAtom is indexed
+        # from 1
         atoms = _sort_atoms(
             (
-                molecule.GetAtom(ob_angle[0] + 1),
-                molecule.GetAtom(ob_angle[1] + 1),
-                molecule.GetAtom(ob_angle[2] + 1),
-            )
+                molecule.GetAtom(ob_angle[1] + 1),  # Left atom
+                molecule.GetAtom(ob_angle[0] + 1),  # Vertex atom
+                molecule.GetAtom(ob_angle[2] + 1),  # Right atom
+            )  # Note this is the correct form also for GetAngle (weird library...)
         )
 
         # Calculate the angle
