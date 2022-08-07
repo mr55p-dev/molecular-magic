@@ -8,9 +8,39 @@ from magic.config import aggregation
 cfg = aggregation["plotting"]
 
 
+def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
+    """Calculate the name of a plot based on the feature and atom sequence"""
+
+    # TODO: #45 Use the feature name to get a more accurate plot name
+    element_map = {1: "H", 6: "C", 7: "N", 8: "O"}
+
+    if feature_name == "hbonds":
+        # Hbonds are a special case
+        return f"{element_map[atom_sequence[0]]}-H...{element_map[atom_sequence[1]]}"
+    elif feature_name == "angles":
+        # Create the usual sequence (excluding the coordination measure)
+        sequence = list(map(lambda x: element_map[x], atom_sequence[:3]))
+
+        # Extract the carbon coordination if applicable
+        # Coordination no will be 0 if the central atom
+        # is not carbon
+        sequence[1] += str(atom_sequence[3] or "")
+    elif feature_name in ["bonds", "dihedrals"]:
+        # For bonds and dihedrals the same code works
+        sequence = map(lambda x: element_map[x], atom_sequence)
+    # else:
+    #     raise NotImplementedError(f"{feature_name} not implemented for plotting.")
+
+    return feature_name, "-".join(sequence)
+
+
 def plot_histogram(
-    data: np.ndarray, density: tuple[np.ndarray], bins: np.ndarray, name: str
+    data: np.ndarray, density: tuple[np.ndarray], bins: np.ndarray, name: tuple[str]
 ) -> None:
+    """
+    ::args::
+        name : tuple[feature name, feature type]
+    """
     # Create a new figure
     fig = plt.figure()
 
@@ -30,7 +60,13 @@ def plot_histogram(
     fig.suptitle(name)
 
     # Save the figure
-    outdir = Path(cfg["save-dir"])
-    outdir.mkdir(exist_ok=True)
+    feature_name, file_name = name
 
-    plt.savefig(outdir / (name + '.png'))
+    outdir = Path(cfg["save-dir"]) / feature_name
+    outdir.mkdir(exist_ok=True, parents=True)
+
+    plt.savefig(outdir / (file_name + ".png"))
+
+    # Close the figure
+    plt.close()
+    plt.close(fig)

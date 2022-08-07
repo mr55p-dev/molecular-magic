@@ -6,7 +6,7 @@ from collections import defaultdict
 from functools import partial
 from typing import Callable
 from tqdm import tqdm
-from magic.graphing import plot_histogram
+from magic.graphing import get_plot_name, plot_histogram
 from magic.vectorizer import HistogramData, MoleculeData
 from magic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
@@ -53,7 +53,7 @@ def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
 
 
 def data_to_bins(
-    data: np.ndarray, graphing_callback: Callable = None, name: str = None
+    data: np.ndarray, graphing_callback: Callable = None, name: tuple[str] = None
 ) -> np.ndarray:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
@@ -198,12 +198,10 @@ def compute_histogram_vectors(
         if len([i for j in values for i in j]) < 2:
             continue
         flat_values = np.concatenate(values).ravel()
-        element_map = {1: "H", 6: "C", 7: "N", 8: "O"}
-        # TODO: #45 Use the feature name to get a more accurate plot name
         type_bins[feature_type] = data_to_bins(
             flat_values,
             plot_histogram,
-            name="-".join(map(lambda x: element_map[x], feature_type)),
+            name=get_plot_name(feature, feature_type),
         )
 
     # Go over the type bins and get the vectors for each molecule
