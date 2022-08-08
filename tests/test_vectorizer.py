@@ -56,14 +56,23 @@ def test_bin_generation():
     #         .
     # .       .     .
     # .       . . . .
-    # . .       . . . . .
+    # . .     . . . . . .
     # 0 1 2 3 4 5 6 7 8 9
-    data = np.array([0, 1, 1, 1, 5, 5, 5, 5, 5, 6, 6, 7, 7, 8, 8, 8, 9])
+    data = np.array(
+        [0] * 30
+        + [1] * 10
+        + [4] * 50
+        + [5] * 10
+        + [6] * 10
+        + [7] * 30
+        + [8] * 10
+        + [9] * 5
+    )
     bins = data_to_bins(data)
-    assert len(bins) == 4
+    assert len(bins) == 2
 
     instance = np.array([-1, 2.5, 5, 7, 15])
-    truth = np.ones((len(bins) + 1))
+    truth = np.array([1, 2, 2])
 
     predicted = assign_bin(instance, bins)
     assert (predicted == truth).all()
