@@ -86,9 +86,16 @@ def _should_reverse(arr: list[Any]) -> bool:
     # Iterate from the edges to the center
     for left, right in zip(arr[:middle], reversed(arr[middle:])):
         # If there are a pair such that right > left then we will instruct
-        # reversal to occur
-        if left < right:
+        # reversal to occur. Note that the 'outside' of the list should take
+        # priority so we break **unless** they are equal
+        if left == right:
+            continue
+        elif left < right:
             return True
+        else:
+            return False
+
+    # If all elements are equal, we do not need to reverse
     return False
 
 
@@ -133,6 +140,15 @@ def _proton_is_enabled(proton: pb.Atom, enablers: tuple[int]) -> bool:
             return True
 
     return False
+
+
+def _correct_symmetric_torsion(theta: float) -> float:
+    angle = theta * -1 if theta < 0 else theta
+    return 360 - angle if angle > 180 else angle
+
+
+def _correct_asymmetric_torsion(theta: float) -> float:
+    return theta + 360 if theta < 0 else theta
 
 
 def _get_amine_counts(molecule: ob.OBMol) -> Iterator[int]:
@@ -234,8 +250,18 @@ def _get_dihedrals_data(molecule: ob.OBMol) -> HistogramData:
             )
         )
 
-        # Calculate the angle
+        # Calculate the angle and account for negative values
+        def check_eq(left, right):
+            return left.GetAtomicNum() == right.GetAtomicNum()
+
+        # Provides correction for torsional angles for symmetric and non-symmetric
+        # dihedral situations
         torsion_degree = molecule.GetTorsion(*atoms)
+        symmetric = check_eq(atoms[1], atoms[2]) and check_eq(atoms[0], atoms[3])
+        if symmetric:
+            torsion_degree = _correct_symmetric_torsion(torsion_degree)
+        else:
+            torsion_degree = _correct_asymmetric_torsion(torsion_degree)
 
         # Save the information
         dihedrals[_create_dict_key(atoms)].append(torsion_degree)
@@ -258,11 +284,15 @@ def _get_hbond_data(molecule: ob.OBMol) -> HistogramData:
     # For each proton find its bonded atoms
     # Keep only donors which neighbour atoms in the enabler set
     donor_set = map(_collect_neighbours, protons)
-    donor_set = filter(lambda x: x.bonded_atom.GetAtomicNum() in cfg["hbond-atoms"], donor_set)
+    donor_set = filter(
+        lambda x: x.bonded_atom.GetAtomicNum() in cfg["hbond-atoms"], donor_set
+    )
 
     # Find all the acceptor atoms
     acceptor_set = list(
-        filter(lambda x: x.GetAtomicNum() in cfg["hbond-atoms"], ob.OBMolAtomIter(molecule))
+        filter(
+            lambda x: x.GetAtomicNum() in cfg["hbond-atoms"], ob.OBMolAtomIter(molecule)
+        )
     )
 
     # Find the set of all donors and acceptors, keep only those within the right distance
