@@ -7,7 +7,6 @@ extraction:
    - 7
    - 8
 aggregation:
-  kde-bandwidth: 0.3
   resolution: 1000
   # Can be scf_energy, free_energy, net_charge
   label-name: "free_energy"
