@@ -6,6 +6,7 @@ from magic.config import aggregation
 
 
 cfg = aggregation["plotting"]
+sns.set_style("whitegrid")
 
 
 def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
@@ -16,7 +17,10 @@ def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
 
     if feature_name == "hbonds":
         # Hbonds are a special case
-        return f"{element_map[atom_sequence[0]]}-H...{element_map[atom_sequence[1]]}"
+        return (
+            feature_name,
+            f"{element_map[atom_sequence[0]]}-H...{element_map[atom_sequence[1]]}",
+        )
     elif feature_name == "angles":
         # Create the usual sequence (excluding the coordination measure)
         sequence = list(map(lambda x: element_map[x], atom_sequence[:3]))
@@ -57,11 +61,19 @@ def plot_histogram(
     sns.lineplot(x=density[0], y=density[1], ax=ax)
 
     # Set the figure title
-    fig.suptitle(name)
+    axis_title = {
+        "bonds": "Bond length",
+        "angles": "Angle",
+        "dihedrals": "Dihedral angle",
+        "hbonds": "Hydrogen bond length",
+    }
+    feature_name, file_name = name
+    fig.suptitle(f"{feature_name.capitalize()}: {file_name}")
+
+    # Set axis title
+    ax.set_xlabel(axis_title[feature_name])
 
     # Save the figure
-    feature_name, file_name = name
-
     outdir = Path(cfg["save-dir"]) / feature_name
     outdir.mkdir(exist_ok=True, parents=True)
 
