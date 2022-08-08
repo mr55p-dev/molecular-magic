@@ -120,7 +120,7 @@ def data_to_bins(
     if bins.shape[0] == 0:
         bins = [-np.inf, np.inf]
 
-    if graphing_callback:
+    if graphing_callback and name:
         graphing_callback(data, (sample_space, sample_values), bins, name)
 
     return bins
@@ -148,7 +148,7 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
 
 
 def compute_histogram_vectors(
-    molecules: list[MoleculeData], feature: str
+    molecules: list[MoleculeData], feature: str, graphing_callback: Callable = None
 ) -> np.ndarray:
     """Takes a dataset of molecules and a property to calculate and computes
     histograms for every type of interaction (ie for bonds CC, CH) and then
@@ -200,8 +200,8 @@ def compute_histogram_vectors(
         flat_values = np.concatenate(values).ravel()
         type_bins[feature_type] = data_to_bins(
             flat_values,
-            plot_histogram,
-            name=get_plot_name(feature, feature_type),
+            graphing_callback=graphing_callback,
+            name=get_plot_name(feature, feature_type) if graphing_callback else None,
         )
 
     # Go over the type bins and get the vectors for each molecule
