@@ -50,7 +50,7 @@ def plot_histogram(
 
     # Plot the data as a histogram
     ax = sns.histplot(
-        data,
+        data, stat='density'  # Normalize the area under the histogram
     )
 
     # Plot vertical lines for every bin boundary
