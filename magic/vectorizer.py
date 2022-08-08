@@ -8,6 +8,7 @@ from openbabel import pybel as pb
 from openbabel import openbabel as ob
 from collections import Counter, defaultdict, namedtuple
 from magic.config import extraction as cfg
+from numpy import sign
 
 
 # Types
@@ -86,9 +87,16 @@ def _should_reverse(arr: list[Any]) -> bool:
     # Iterate from the edges to the center
     for left, right in zip(arr[:middle], reversed(arr[middle:])):
         # If there are a pair such that right > left then we will instruct
-        # reversal to occur
-        if left < right:
+        # reversal to occur. Note that the 'outside' of the list should take
+        # priority so we break **unless** they are equal
+        if left == right:
+            continue
+        elif left < right:
             return True
+        else:
+            return False
+
+    # If all elements are equal, we do not need to reverse
     return False
 
 
@@ -133,6 +141,19 @@ def _proton_is_enabled(proton: pb.Atom, enablers: tuple[int]) -> bool:
             return True
 
     return False
+
+
+def _correct_asymmetric_torsion(theta: float) -> float:
+    """Should be between 0 and 360"""
+    if theta > 0:
+        return theta
+    return 360 + theta
+
+
+def _correct_symmetric_torsion(theta: float) -> float:
+    """Should be between 0 and 180"""
+    t = _correct_asymmetric_torsion(theta)
+    return 360 - t if t > 180 else t
 
 
 def _get_amine_counts(molecule: ob.OBMol) -> Iterator[int]:
@@ -234,11 +255,23 @@ def _get_dihedrals_data(molecule: ob.OBMol) -> HistogramData:
             )
         )
 
-        # Calculate the angle
-        torsion_degree = molecule.GetTorsion(*atoms)
+        # Compute the torsional angle. This will return an angle which is between
+        # -180 and 180, where negative angles imply anticlockwise measurement
+        initial_torsion = molecule.GetTorsion(*atoms)
+
+        # Convert torsion to 0 < theta < 360 (basically remove any measurements of
+        # anticlockwise angles)
+        # cw_torsion = initial_torsion + 360 if initial_torsion < 0 else initial_torsion
+
+        # If torsion is greater than 180 then we can flip the ordering of the atoms to achieve
+        # the same clockwise angle but looked at from the other end
+        # torsion = 360 - cw_torsion if cw_torsion > 180 else cw_torsion
+
+        # The same effect as this can be done if we simply do the following
+        torsion = initial_torsion * sign(initial_torsion)
 
         # Save the information
-        dihedrals[_create_dict_key(atoms)].append(torsion_degree)
+        dihedrals[_create_dict_key(atoms)].append(torsion)
 
     return dihedrals
 
@@ -258,11 +291,15 @@ def _get_hbond_data(molecule: ob.OBMol) -> HistogramData:
     # For each proton find its bonded atoms
     # Keep only donors which neighbour atoms in the enabler set
     donor_set = map(_collect_neighbours, protons)
-    donor_set = filter(lambda x: x.bonded_atom.GetAtomicNum() in cfg["hbond-atoms"], donor_set)
+    donor_set = filter(
+        lambda x: x.bonded_atom.GetAtomicNum() in cfg["hbond-atoms"], donor_set
+    )
 
     # Find all the acceptor atoms
     acceptor_set = list(
-        filter(lambda x: x.GetAtomicNum() in cfg["hbond-atoms"], ob.OBMolAtomIter(molecule))
+        filter(
+            lambda x: x.GetAtomicNum() in cfg["hbond-atoms"], ob.OBMolAtomIter(molecule)
+        )
     )
 
     # Find the set of all donors and acceptors, keep only those within the right distance
