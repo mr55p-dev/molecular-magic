@@ -1,6 +1,7 @@
 import argparse
 import openbabel.pybel as pb
-from magic.parser import parse_dft_tree, read_sdf_archive
+from magic.parser import read_sdf_archive
+from magic.cli import parse
 from pathlib import Path
 import pytest
 
@@ -16,7 +17,7 @@ def test_encode():
     test_output.unlink(missing_ok=True)
 
     args = argparse.Namespace(input=test_dir, output=test_output)
-    parse_dft_tree(args)
+    parse(args)
 
     assert test_output.exists()
     assert test_output.stat().st_size > 0
