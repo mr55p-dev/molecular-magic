@@ -8,6 +8,7 @@ from openbabel import pybel as pb
 from openbabel import openbabel as ob
 from collections import Counter, defaultdict, namedtuple
 from magic.config import extraction as cfg
+from numpy import sign
 
 
 # Types
@@ -142,13 +143,17 @@ def _proton_is_enabled(proton: pb.Atom, enablers: tuple[int]) -> bool:
     return False
 
 
-def _correct_symmetric_torsion(theta: float) -> float:
-    angle = theta * -1 if theta < 0 else theta
-    return 360 - angle if angle > 180 else angle
-
-
 def _correct_asymmetric_torsion(theta: float) -> float:
-    return theta + 360 if theta < 0 else theta
+    """Should be between 0 and 360"""
+    if theta > 0:
+        return theta
+    return 360 + theta
+
+
+def _correct_symmetric_torsion(theta: float) -> float:
+    """Should be between 0 and 180"""
+    t = _correct_asymmetric_torsion(theta)
+    return 360 - t if t > 180 else t
 
 
 def _get_amine_counts(molecule: ob.OBMol) -> Iterator[int]:
@@ -250,21 +255,23 @@ def _get_dihedrals_data(molecule: ob.OBMol) -> HistogramData:
             )
         )
 
-        # Calculate the angle and account for negative values
-        def check_eq(left, right):
-            return left.GetAtomicNum() == right.GetAtomicNum()
+        # Compute the torsional angle. This will return an angle which is between
+        # -180 and 180, where negative angles imply anticlockwise measurement
+        initial_torsion = molecule.GetTorsion(*atoms)
 
-        # Provides correction for torsional angles for symmetric and non-symmetric
-        # dihedral situations
-        torsion_degree = molecule.GetTorsion(*atoms)
-        symmetric = check_eq(atoms[1], atoms[2]) and check_eq(atoms[0], atoms[3])
-        if symmetric:
-            torsion_degree = _correct_symmetric_torsion(torsion_degree)
-        else:
-            torsion_degree = _correct_asymmetric_torsion(torsion_degree)
+        # Convert torsion to 0 < theta < 360 (basically remove any measurements of
+        # anticlockwise angles)
+        # cw_torsion = initial_torsion + 360 if initial_torsion < 0 else initial_torsion
+
+        # If torsion is greater than 180 then we can flip the ordering of the atoms to achieve
+        # the same clockwise angle but looked at from the other end
+        # torsion = 360 - cw_torsion if cw_torsion > 180 else cw_torsion
+
+        # The same effect as this can be done if we simply do the following
+        torsion = initial_torsion * sign(initial_torsion)
 
         # Save the information
-        dihedrals[_create_dict_key(atoms)].append(torsion_degree)
+        dihedrals[_create_dict_key(atoms)].append(torsion)
 
     return dihedrals
 
