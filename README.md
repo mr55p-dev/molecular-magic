@@ -29,6 +29,19 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 <!-- ---- -->
 
 ## How to run the code
+Much of the configuration for feature generation is controlled via `config.yml`. The properties are:
+- ### Extraction
+  - `output-format`: The way in which molecules are encoded when the parser scans through the `g09` files. This should be left as `sdf`
+  - `hbond-min-distance`: The minimum distance (in angstrom) between a hydrogen donor and hbond acceptor for a bond to be considered a hydrogen bond
+  - `hbond-max-distance`: The maximum distance (in angstrom) between a hydrogen donor and hbond acceptor for a bond to be considered a hydrogen bond
+  - `exclude-imines`: Currently not implemented
+  - `hbond-atoms`: The atom types (given as atomic numbers) which can take part in hydrogen bonding. Default behaviour is Nitrogen (7) and Oxygen (8)
+- ### Aggregation
+  - `resolution`: The number of samples to use when sampling the KDE for computing minima.
+  - `label_name`: The property to extract as the target for each molecule (can be `scf_energy`, `free_energy` or `net_charge`)
+  - `atom-types`: Each atom (atomic number) listed here will be counted and included as part of the representation. By default this is `[1, 6, 7, 8]` meaning `[Hydrogen, Carbon, Nitrogen, Oxygen]`. The elemnents `[0:4]` of the feature will therefore correspond to the frequency of those atoms in the order given.
+  - `amine-types`: The degrees of amine which are counted as part of the representation. By default, primary (`1`), secondary (`2`) and tertiary (`3`) amines are counted.
+  - `feature-types`: Which features to use when generating the histograms. Allowed values are `bonds`, `angles`, `dihedrals` and `hbonds`. More may be added in the future.
 
 ### 0. Set up the environment
 - Clone this repo and install the anaconda environment with `conda env create -f environment.yml`. This downlads the correct version of python and all its dependencies.
