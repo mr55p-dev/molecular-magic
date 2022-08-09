@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow import keras
 from wandb.keras import WandbCallback
 from magic.split import stoichiometric_split
+from magic.config import aggregation as cfg_aggregation, extraction as cfg_extraction
 
 random_seed = 50
 tf.random.set_seed(random_seed)
@@ -25,8 +26,10 @@ gpus = tf.config.list_logical_devices("GPU")
 # Dataset                                         #
 ###################################################
 
-X = np.load("./auto_bandwidth_features/features.npy")
-y = np.load("./auto_bandwidth_features/labels.npy").astype(np.double)
+# X = np.load("./auto_bandwidth_features/features.npy")
+# y = np.load("./auto_bandwidth_features/labels.npy").astype(np.double)
+X = np.load('./part1_vec/features.npy')
+y = np.load('./part1_vec/labels.npy').astype(np.double)
 
 # Use the MolE8 train_test_split logic
 X_train, X_test, y_train, y_test = stoichiometric_split(
@@ -82,15 +85,17 @@ def objective(trial: op.Trial):
     print("Compiled model")
 
     # Configure the weights and biases experiment
-    wandb_config = dict(
-        **{
-            "trial_number": trial.number,
+    wandb_config = {
+        "trial_number": trial.number,
+        "training_params": {
             "learning_rate": "20,40,400,1600,2800 st 1e-2",
             "batch_size": batch_size,
             "n_layers": trial.params["num_layers"],
         },
-        **trial.params,
-    )  # Automatically includes the parameters we are using
+        "model_params": trial.params,
+        "parser_params": cfg_extraction,
+        "aggregation_params": cfg_aggregation,
+    }  # Automatically includes the parameters we are using
     wandb.init(
         reinit=True,
         project="MolecularMagic",
@@ -101,8 +106,8 @@ def objective(trial: op.Trial):
 
     # Fit the model
     hist = model.fit(
-        x = X_train,
-        y = y_train,
+        x=X_train,
+        y=y_train,
         batch_size=batch_size,
         epochs=epochs,
         callbacks=[
@@ -154,7 +159,7 @@ study = op.create_study(
 # Run the optimization
 study.optimize(
     objective,
-    # n_trials=12,
+    n_trials=1,
 )
 
 # TO-DO: Get rid of timestamp command line output

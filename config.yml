@@ -7,7 +7,6 @@ extraction:
    - 7
    - 8
 aggregation:
-  kde-bandwidth: 0.3
   resolution: 10000
   label-name: "scf_energy"
   atom-types:

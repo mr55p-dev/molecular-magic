@@ -12,7 +12,6 @@ import numpy as np
 
 
 # Get config vars
-bandwidth = cfg["kde-bandwidth"]
 resolution = cfg["resolution"]
 
 
