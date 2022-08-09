@@ -4,7 +4,9 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
+from typing import Callable
 from tqdm import tqdm
+from magic.graphing import get_plot_name, plot_histogram
 from magic.vectorizer import HistogramData, MoleculeData
 from magic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
@@ -50,7 +52,9 @@ def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
     return ...
 
 
-def data_to_bins(data: np.ndarray) -> np.ndarray:
+def data_to_bins(
+    data: np.ndarray, graphing_callback: Callable = None, name: tuple[str] = None
+) -> np.ndarray:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
 
@@ -116,6 +120,9 @@ def data_to_bins(data: np.ndarray) -> np.ndarray:
     if bins.shape[0] == 0:
         bins = [-np.inf, np.inf]
 
+    if graphing_callback and name:
+        graphing_callback(data, (sample_space, sample_values), bins, name)
+
     return bins
 
 
@@ -134,14 +141,14 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # This is slow find a better way
     for bin_idx in binned:
         vec[bin_idx] += 1
-    
+
     # TO-DO: This may be able to be improved using counter or list comprehension
-    
+
     return vec
 
 
 def compute_histogram_vectors(
-    molecules: list[MoleculeData], feature: str
+    molecules: list[MoleculeData], feature: str, graphing_callback: Callable = None
 ) -> np.ndarray:
     """Takes a dataset of molecules and a property to calculate and computes
     histograms for every type of interaction (ie for bonds CC, CH) and then
@@ -191,7 +198,11 @@ def compute_histogram_vectors(
         if len([i for j in values for i in j]) < 2:
             continue
         flat_values = np.concatenate(values).ravel()
-        type_bins[feature_type] = data_to_bins(flat_values)
+        type_bins[feature_type] = data_to_bins(
+            flat_values,
+            graphing_callback=graphing_callback,
+            name=get_plot_name(feature, feature_type) if graphing_callback else None,
+        )
 
     # Go over the type bins and get the vectors for each molecule
     bin_col_vecs = []

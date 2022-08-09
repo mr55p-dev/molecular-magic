@@ -23,6 +23,7 @@ from magic.rules import filter_mols
 from magic import vectorizer
 from magic import aggregator
 from magic import config
+from magic.graphing import plot_histogram
 import numpy as np
 from pathlib import Path
 import sys
@@ -117,7 +118,7 @@ def aggregate(args: Namespace) -> None:
     accounted_features = config.aggregation["feature-types"]
     hist_data = np.concatenate(
         [
-            aggregator.compute_histogram_vectors(mols, feature)
+            aggregator.compute_histogram_vectors(mols, feature, graphing_callback=plot_histogram if args.plot_histograms else None)
             for feature in tqdm(
                 accounted_features,
                 leave=False,
@@ -201,6 +202,11 @@ def main(argv=sys.argv):
         type=Path,
         help="""The directory to output numpy arrays to.
         If it does not exist, it will be created.""",
+    )
+    vectorizer.add_argument(
+        "--plot-histograms",
+        action="store_true",
+        help="""Save histograms for this run"""
     )
     vectorizer.set_defaults(func=aggregate)
 

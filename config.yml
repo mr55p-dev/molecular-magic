@@ -24,3 +24,5 @@ aggregation:
     - "angles"
     - "dihedrals"
     - "hbonds"
+  plotting:
+    save-dir: "./figure-test"
