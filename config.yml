@@ -8,7 +8,8 @@ extraction:
    - 8
 aggregation:
   resolution: 10000
-  label-name: "scf_energy"
+  # Can be scf_energy, free_energy, net_charge
+  label-name: "free_energy"
   atom-types:
     - 1
     - 6
@@ -23,3 +24,5 @@ aggregation:
     - "angles"
     - "dihedrals"
     - "hbonds"
+  plotting:
+    save-dir: "./figure-test"
