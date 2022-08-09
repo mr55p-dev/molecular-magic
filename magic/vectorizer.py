@@ -314,3 +314,24 @@ def _get_hbond_data(molecule: ob.OBMol) -> HistogramData:
         hbonds[key].append(interaction.distance)
 
     return hbonds
+
+
+def _search_substructure(mol: ob.OBMol, pattern: str) -> int:
+    """Find the number of occurences of a sub-structure in the molecule
+    :::args:::
+        pattern : str
+            SMARTS-string encoding the substructure to search for
+    """
+    # Setup the pattern
+    group = ob.OBSmartsPattern()
+    group.Init(pattern)
+    assert group.IsValid()
+
+    # Run the search
+    group.Match(mol)
+
+    # Can use GetMapList or GetUMapList (the latter is unique matches only)
+    matches = group.GetUMapList()
+
+    return len(matches)
+
