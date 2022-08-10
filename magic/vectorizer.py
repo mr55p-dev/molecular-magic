@@ -46,6 +46,9 @@ class MoleculeData:
     atoms: Counter
     amines: Counter
 
+    # Additioanl structures to get the count of
+    structures: list[int]
+
     # Properties which require a shitton of compute
     bonds: HistogramData
     angles: HistogramData
@@ -67,6 +70,13 @@ def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
     atoms = Counter([i.atomicnum for i in molecule.atoms])
     amines = Counter(_get_amine_counts(molecule.OBMol))
 
+    # Get the counts of different substructures
+    structures = (
+        [_search_substructure(molecule.OBMol, i) for i in cfg["substructures"]]
+        if cfg["substructures"]
+        else []
+    )
+
     # Extract the more complicated features of a molecule
     bonds = _get_bonds_data(molecule.OBMol)
     angles = _get_angles_data(molecule.OBMol)
@@ -74,7 +84,9 @@ def calculate_mol_data(molecule: pb.Molecule) -> MoleculeData:
     hbonds = _get_hbond_data(molecule.OBMol)
 
     # Copy the SDF attributes into MoleculeData
-    return MoleculeData(molecule.data, atoms, amines, bonds, angles, dihedrals, hbonds)
+    return MoleculeData(
+        molecule.data, atoms, amines, structures, bonds, angles, dihedrals, hbonds
+    )
 
 
 # Util functions
@@ -314,3 +326,23 @@ def _get_hbond_data(molecule: ob.OBMol) -> HistogramData:
         hbonds[key].append(interaction.distance)
 
     return hbonds
+
+
+def _search_substructure(mol: ob.OBMol, pattern: str) -> int:
+    """Find the number of occurences of a sub-structure in the molecule
+    :::args:::
+        pattern : str
+            SMARTS-string encoding the substructure to search for
+    """
+    # Setup the pattern
+    group = ob.OBSmartsPattern()
+    group.Init(pattern)
+    assert group.IsValid()
+
+    # Run the search
+    group.Match(mol)
+
+    # Can use GetMapList or GetUMapList (the latter is unique matches only)
+    matches = group.GetUMapList()
+
+    return len(matches)

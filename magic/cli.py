@@ -114,6 +114,9 @@ def aggregate(args: Namespace) -> None:
         [[i.amines[amine] for i in mols] for amine in accounted_amine_degrees]
     ).T
 
+    # Add in any other calculated frequencies
+    structure_vectors = np.array([i.structures for i in mols])
+
     # Get the histogam vectors. The features are defined in config
     accounted_features = config.aggregation["feature-types"]
     hist_data = np.concatenate(
@@ -129,7 +132,7 @@ def aggregate(args: Namespace) -> None:
     )
 
     # Concatenate all the vectors
-    feature_vector = np.concatenate((atom_vectors, amine_vectors, hist_data), axis=1)
+    feature_vector = np.concatenate((atom_vectors, amine_vectors, structure_vectors, hist_data), axis=1)
 
     # Check the output path exists
     args.output.mkdir(exist_ok=True)
