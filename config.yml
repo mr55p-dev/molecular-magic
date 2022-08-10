@@ -6,6 +6,8 @@ extraction:
   hbond-atoms:
    - 7
    - 8
+  substructures:  # List of SMARTS strings to search the structure for
+    # - "c"  # aromatic carbon
 aggregation:
   resolution: 10000
   # Can be scf_energy, free_energy, net_charge
