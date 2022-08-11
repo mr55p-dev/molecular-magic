@@ -6,16 +6,76 @@ from collections import defaultdict
 from functools import partial
 from typing import Callable
 from tqdm import tqdm
-from molmagic.graphing import get_plot_name, plot_histogram
+from molmagic.graphing import get_plot_name
 from molmagic.vectorizer import HistogramData, MoleculeData
 from molmagic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
 import numpy as np
+from molmagic.graphing import draw_and_save_hist
 
 
 # Get config vars
 resolution = cfg["resolution"]
 bandwidth = cfg["bandwidth"]
+
+
+def compute_and_bin_mols(
+    mols: list[MoleculeData], plot_histograms: bool = False
+) -> tuple[np.ndarray]:
+    """Take an iterator of molecules, compute histograms based on the properties
+    specified in config.yml and bin the features in each molecule
+
+    ::args::
+        mols : list(like)<MoleculeData>
+            List or iterable of MoleculeData objects, one for each item in the dataset
+        plot_histograms : bool (default False)
+            Whether to save the histograms generated
+
+
+    """
+    # Get target vector. This should be encoded in the SDF archive in
+    # the first step
+    target_name = cfg["label-name"]
+    target_vector = np.array([i.attributes[target_name] for i in mols])
+
+    # Get the atom count vectors. The atoms used are defined in config
+    accounted_atom_types = cfg["atom-types"]
+    atom_vectors = np.array(
+        [[i.atoms[atom] for i in mols] for atom in accounted_atom_types]
+    ).T
+
+    # Get the amine count vectors. The degrees are defined in config
+    accounted_amine_degrees = cfg["amine-types"]
+    amine_vectors = np.array(
+        [[i.amines[amine] for i in mols] for amine in accounted_amine_degrees]
+    ).T
+
+    # Add in any other calculated frequencies
+    structure_vectors = np.array([i.structures for i in mols])
+
+    # Get the histogam vectors. The features are defined in config
+    accounted_features = cfg["feature-types"]
+    hist_data = np.concatenate(
+        [
+            compute_histogram_vectors(
+                mols,
+                feature,
+                graphing_callback=draw_and_save_hist if plot_histograms else None,
+            )
+            for feature in tqdm(
+                accounted_features,
+                leave=False,
+                desc="Histogramming",
+            )
+        ],
+        axis=1,
+    )
+
+    # Concatenate all the vectors
+    feature_vector = np.concatenate(
+        (atom_vectors, amine_vectors, structure_vectors, hist_data), axis=1
+    )
+    return target_vector, feature_vector
 
 
 def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:

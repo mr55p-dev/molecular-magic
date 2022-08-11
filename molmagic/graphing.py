@@ -38,7 +38,7 @@ def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
     return feature_name, "-".join(sequence)
 
 
-def plot_histogram(
+def draw_and_save_hist(
     data: np.ndarray, density: tuple[np.ndarray], bins: np.ndarray, name: tuple[str]
 ) -> None:
     """

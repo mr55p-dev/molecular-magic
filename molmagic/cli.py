@@ -21,9 +21,8 @@ from tqdm import tqdm
 from molmagic import parser
 from molmagic.rules import filter_mols
 from molmagic import vectorizer
-from molmagic import aggregator
+from molmagic.aggregator import compute_and_bin_mols
 from molmagic import config
-from molmagic.graphing import plot_histogram
 import numpy as np
 from pathlib import Path
 import sys
@@ -97,42 +96,8 @@ def aggregate(args: Namespace) -> None:
         )
     )
 
-    # Get target vector. This should be encoded in the SDF archive in
-    # the first step
-    target_name = config.aggregation["label-name"]
-    target_vector = np.array([i.attributes[target_name] for i in mols])
-
-    # Get the atom count vectors. The atoms used are defined in config
-    accounted_atom_types = config.aggregation["atom-types"]
-    atom_vectors = np.array(
-        [[i.atoms[atom] for i in mols] for atom in accounted_atom_types]
-    ).T
-
-    # Get the amine count vectors. The degrees are defined in config
-    accounted_amine_degrees = config.aggregation["amine-types"]
-    amine_vectors = np.array(
-        [[i.amines[amine] for i in mols] for amine in accounted_amine_degrees]
-    ).T
-
-    # Add in any other calculated frequencies
-    structure_vectors = np.array([i.structures for i in mols])
-
-    # Get the histogam vectors. The features are defined in config
-    accounted_features = config.aggregation["feature-types"]
-    hist_data = np.concatenate(
-        [
-            aggregator.compute_histogram_vectors(mols, feature, graphing_callback=plot_histogram if args.plot_histograms else None)
-            for feature in tqdm(
-                accounted_features,
-                leave=False,
-                desc="Histogramming",
-            )
-        ],
-        axis=1,
-    )
-
-    # Concatenate all the vectors
-    feature_vector = np.concatenate((atom_vectors, amine_vectors, structure_vectors, hist_data), axis=1)
+    # Compute and bin the molecules which have been extracted
+    target_vector, feature_vector = compute_and_bin_mols(mols, args.plot_histograms)
 
     # Check the output path exists
     args.output.mkdir(exist_ok=True)
@@ -209,7 +174,7 @@ def main(argv=sys.argv):
     vectorizer.add_argument(
         "--plot-histograms",
         action="store_true",
-        help="""Save histograms for this run"""
+        help="""Save histograms for this run""",
     )
     vectorizer.set_defaults(func=aggregate)
 
