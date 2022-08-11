@@ -22,7 +22,7 @@ from tqdm import tqdm
 from molmagic import parser
 from molmagic.rules import filter_mols
 from molmagic import vectorizer
-from molmagic.aggregator import autobin_mols
+from molmagic.aggregator import autobin_mols, bin_mols
 from molmagic import config
 import numpy as np
 from pathlib import Path
@@ -115,6 +115,45 @@ def aggregate(args: Namespace) -> None:
     )
 
 
+def vectorize(args: Namespace) -> None:
+    """Computes a vector representation of a file of molecules, based on a previous
+    configuration setup by <aggregate>
+    """
+    # Get our molecule set
+    mols = parser.read_sdf_archive(args.mol_archive)
+
+    # Extract the molecular properties
+    # Note here that the substructure search will return different results if the
+    # original and current `config.yml` files are not identical for that field
+    mols = list(
+        tqdm(
+            map(vectorizer.calculate_mol_data, mols),
+            leave=False,
+            desc="Extracting molecular properties",
+        )
+    )
+
+    # Load the original configuration
+    with args.configuration_file.open("r") as f:
+        constructor = yaml.load(f, Loader=yaml.CLoader)
+    data = constructor["data"]
+    metadata = constructor["metadata"]
+
+    # Bin the molecules according to the data and metadata
+    feature_vector, target_vector = bin_mols(mols, data, metadata)
+
+    # Check the output path exists
+    args.output.mkdir(exist_ok=True)
+
+    # Save the files
+    np.save(args.output / "features", feature_vector)
+    np.save(args.output / "labels", target_vector)
+
+    print(
+        f"Vectorized {feature_vector.shape[0]} instances into {feature_vector.shape[1]} features."
+    )
+
+
 def main(argv=sys.argv):
     base_parser = ArgumentParser()
 
@@ -179,7 +218,36 @@ def main(argv=sys.argv):
         action="store_true",
         help="""Save histograms for this run""",
     )
-    vectorizer.set_defaults(func=aggregate)
+    vectorizer.set_defaults(func=vectorize)
+
+    # Create an aggregator option
+    aggregator = subparsers.add_parser(
+        name="aggregator",
+        description="""Compute the feature vector
+        from a given archive file.""",
+    )
+    aggregator.add_argument(
+        "-i",
+        "--input",
+        required=True,
+        type=Path,
+        help="""The bz2 archive of SDF structures annotated by the
+        parser utility.""",
+    )
+    aggregator.add_argument(
+        "-o",
+        "--output",
+        required=True,
+        type=Path,
+        help="""The directory to output numpy arrays to.
+        If it does not exist, it will be created.""",
+    )
+    aggregator.add_argument(
+        "--plot-histograms",
+        action="store_true",
+        help="""Save histograms for this run""",
+    )
+    aggregator.set_defaults(func=aggregate)
 
     args = base_parser.parse_args(argv[1:])
     args.func(args)

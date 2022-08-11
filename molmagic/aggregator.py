@@ -4,8 +4,9 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 from tqdm import tqdm
+import oyaml as yaml
 from molmagic.graphing import get_plot_name
 from molmagic.vectorizer import HistogramData, MoleculeData
 from molmagic.config import aggregation as cfg
@@ -21,56 +22,35 @@ bandwidth = cfg["bandwidth"]
 TypeBinDict = TypeVar("TypeBinDict", bound=dict[tuple[int], list[float]])
 TypeAggregate = TypeVar("TypeAggregate", bound=dict[tuple[int], list[float]])
 
-"""
-Steps:
-- Extract the mol data
-    - partially controlled by config.yml
-- Compute the atom frequency vector
-    - controlled by config.yml
-- Compute the amine degrees
-    - controlled by config.yml
-- Compute the histograms for each feature:
-    - Get the histogram based on the molecules
-    - Assign each molecule
-    - controlled by config.yml heavily
 
+def bin_mols(
+    molecules: list[MoleculeData],
+    data: dict[str, TypeBinDict],
+    metadata: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Load a representaiton based on molecule instances, pre-computed bins and the
+    features used.
 
-Can store as YAML
-$(feature name):
-    - $(feature type):
-        - $(values)
-        - $(values)
-    - $(feature type):
-        - $(values)
-        - $(values)
-$(feature name):
-    - $(feature type):
-        - $(values)
-        - $(values)
-    - $(feature type):
-        - $(values)
-        - $(values)
+    This is not guaranteed to fail if incorrect information is used, as there is no way
+    to validate the features used so beware."""
+    # Get the static parts
+    static_representation, target_vector = _make_static_parts(molecules, metadata)
 
-when calling safe_dump make sure to pass `sort_keys=False`
-Or use `oyaml`
+    # Assign bins based on the data loaded
+    binned_features = [
+        _assign_feature_bins(data[feature], _get_feature_data(molecules, feature))
+        for feature in metadata["feature-types"]
+    ]
+    hist_vectors = np.concatenate(binned_features)
 
+    # put it all together
+    feature_vector = np.concatenate([static_representation, hist_vectors])
 
-Methodology:
-- Load config.yml
-- Compute the atom frequency vectors
-- Compute the amine degrees
-- For each feature
-    - For each type
-        - Load the bin edges
-        - Bin each instance
-    - Concatenate all the types
-- Concatenate all the features
-
-"""
+    return feature_vector, target_vector
 
 
 def autobin_mols(
-    mols: list[MoleculeData], plot_histograms: bool = False
+    molecules: list[MoleculeData], plot_histograms: bool = False
 ) -> tuple[np.ndarray, np.ndarray, dict]:
     """Take an iterator of molecules, compute histograms based on the properties
     specified in config.yml and bin the features in each molecule
@@ -100,32 +80,15 @@ def autobin_mols(
 
 
     """
-    # Get target vector. This should be encoded in the SDF archive in
-    # the first step
-    target_name = cfg["label-name"]
-    target_vector = np.array([i.attributes[target_name] for i in mols])
-
-    # Get the atom count vectors. The atoms used are defined in config
-    accounted_atom_types = cfg["atom-types"]
-    atom_vectors = np.array(
-        [[i.atoms[atom] for i in mols] for atom in accounted_atom_types]
-    ).T
-
-    # Get the amine count vectors. The degrees are defined in config
-    accounted_amine_degrees = cfg["amine-types"]
-    amine_vectors = np.array(
-        [[i.amines[amine] for i in mols] for amine in accounted_amine_degrees]
-    ).T
-
-    # Add in any other calculated frequencies
-    structure_vectors = np.array([i.structures for i in mols])
+    # Get the static part of the representation
+    static_representation, target_vector = _make_static_parts(molecules, cfg)
 
     # Get the histogam vectors. The features are defined in config
     accounted_features = cfg["feature-types"]
-    feature_vectors, type_bins = zip(
+    hist_vector_list, type_bins = zip(
         *[
             autobin_feature(
-                mols,
+                molecules,
                 feature,
                 graphing_callback=draw_and_save_hist if plot_histograms else None,
             )
@@ -144,15 +107,13 @@ def autobin_mols(
     }
 
     # Concatenate the feature vectors
-    hist_data = np.concatenate(
-        feature_vectors,
+    hist_vectors = np.concatenate(
+        hist_vector_list,
         axis=1,
     )
 
     # Concatenate all the vectors
-    feature_vector = np.concatenate(
-        (atom_vectors, amine_vectors, structure_vectors, hist_data), axis=1
-    )
+    feature_vector = np.concatenate((static_representation, hist_vectors), axis=1)
     return feature_vector, target_vector, metadata
 
 
@@ -185,7 +146,7 @@ def autobin_feature(
     """
     # Extract the property we want (this could be faster by accessing
     # the object dict directly)
-    feature_data = [getattr(i, feature) for i in mol_data]
+    feature_data = _get_feature_data(mol_data, feature)
 
     # Get every key from every dict in the molecules data and select
     # only unique ones
@@ -202,6 +163,36 @@ def autobin_feature(
 
     # Go over the type bins and get the vectors for each molecule
     return _assign_feature_bins(type_bins, feature_data), type_bins
+
+
+def _make_static_parts(
+    mols: list[MoleculeData], config: dict[str, Any]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Deals with creating fixed parts of representations that dont require binning"""
+    # Get target vector. This should be encoded in the SDF archive in
+    # the first step
+    target_name = config["label-name"]
+    target_vector = np.array([i.attributes[target_name] for i in mols])
+
+    # Get the atom count vectors. The atoms used are defined in config
+    accounted_atom_types = config["atom-types"]
+    atom_vectors = np.array(
+        [[i.atoms[atom] for i in mols] for atom in accounted_atom_types]
+    ).T
+
+    # Get the amine count vectors. The degrees are defined in config
+    accounted_amine_degrees = config["amine-types"]
+    amine_vectors = np.array(
+        [[i.amines[amine] for i in mols] for amine in accounted_amine_degrees]
+    ).T
+
+    # Add in any other calculated frequencies
+    structure_vectors = np.array([i.structures for i in mols])
+
+    return (
+        np.concatenate((atom_vectors, amine_vectors, structure_vectors), axis=1),
+        target_vector,
+    )
 
 
 def _get_feature_bins(
@@ -268,7 +259,7 @@ def _assign_feature_bins(
 
 def _get_type_bins(
     data: np.ndarray, graphing_callback: Callable = None, name: tuple[str] = None
-) -> np.ndarray:
+) -> list[float]:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
 
@@ -332,12 +323,12 @@ def _get_type_bins(
     # Define additional bins at the lower and upper bounds of the data (optional)
     # Ensure the bins are monotonic and increasing
     if bins.shape[0] == 0:
-        bins = [-np.inf, np.inf]
+        bins = np.array([-np.inf, np.inf])
 
     if graphing_callback and name:
         graphing_callback(data, (sample_space, sample_values), bins, name)
 
-    return bins
+    return bins.tolist()
 
 
 def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
@@ -359,3 +350,8 @@ def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # TO-DO: This may be able to be improved using counter or list comprehension
 
     return vec
+
+def _get_feature_data(mols: list[MoleculeData], feature: str) -> list[Any]:
+    """Extract a single attribute (feature) from the MoleculeData class.
+    Usually used to get a list of HistogramData instances with a smaller footprint"""
+    return [getattr(i, feature) for i in mols]
