@@ -1,3 +1,4 @@
+import argparse
 from collections import defaultdict
 from itertools import islice
 from math import inf
@@ -5,6 +6,7 @@ from pathlib import Path
 from molmagic.aggregator import _assign_type_bins, _get_type_bins
 from molmagic.vectorizer import calculate_mol_data, _should_reverse
 from molmagic.parser import read_sdf_archive
+from molmagic.cli import aggregate
 import pytest
 import numpy as np
 
@@ -76,3 +78,31 @@ def test_bin_generation():
 
     predicted = _assign_type_bins(instance, bins)
     assert (predicted == truth).all()
+
+
+@pytest.mark.dependency(depends=["test_encode"])
+def test_revec():
+    test_output = Path("dft_test_files/output.sdf.bz2")
+    # Create hists and bins and metadata
+
+    vec_output = Path("dft_test_files/vec_gen/")
+    args = argparse.Namespace(input=test_output, output=vec_output)
+    aggregate(args)
+
+    revec_output = Path("dft_test_files/vec_regen/")
+    args_2 = argparse.Namespace(
+        input=test_output,
+        metadata=Path("dft_test_files/vec_gen/metadata.yaml"),
+        output=revec_output,
+    )
+    aggregate(args_2)
+
+    # Load the generated vectors
+    vec = np.load(vec_output/"features.npy")
+    lab = np.load(vec_output/"labels.npy")
+
+    revec = np.load(revec_output/"features.npy")
+    relab = np.load(revec_output/"labels.npy")
+
+    assert (vec == revec).all()
+    assert (lab == relab).all()
