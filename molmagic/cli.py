@@ -17,6 +17,7 @@ Depends on `cclib` and `bz2`.
 from argparse import ArgumentParser, Namespace
 import bz2
 
+import oyaml as yaml
 from tqdm import tqdm
 from molmagic import parser
 from molmagic.rules import filter_mols
@@ -97,7 +98,7 @@ def aggregate(args: Namespace) -> None:
     )
 
     # Compute and bin the molecules which have been extracted
-    target_vector, feature_vector = autobin_mols(mols, args.plot_histograms)
+    feature_vector, target_vector, metadata = autobin_mols(mols, args.plot_histograms)
 
     # Check the output path exists
     args.output.mkdir(exist_ok=True)
@@ -105,6 +106,8 @@ def aggregate(args: Namespace) -> None:
     # Save the files
     np.save(args.output / "features", feature_vector)
     np.save(args.output / "labels", target_vector)
+    with (args.output / "metadata.yaml").open("w") as metadata_file:
+        yaml.dump(metadata, metadata_file)
 
     print(
         f"""Generated a feature matrix with {feature_vector.shape[0]} instances

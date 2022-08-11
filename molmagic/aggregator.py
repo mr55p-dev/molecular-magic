@@ -4,7 +4,7 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
-from typing import Callable, DefaultDict, TypeVar
+from typing import Callable, TypeVar
 from tqdm import tqdm
 from molmagic.graphing import get_plot_name
 from molmagic.vectorizer import HistogramData, MoleculeData
@@ -71,7 +71,7 @@ Methodology:
 
 def autobin_mols(
     mols: list[MoleculeData], plot_histograms: bool = False
-) -> tuple[np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, dict]:
     """Take an iterator of molecules, compute histograms based on the properties
     specified in config.yml and bin the features in each molecule
 
@@ -80,6 +80,23 @@ def autobin_mols(
             List or iterable of MoleculeData objects, one for each item in the dataset
         plot_histograms : bool (default False)
             Whether to save the histograms generated
+        bin_output : Path?
+            Where to output the data for reconstructing this representation.
+    ::returns::
+        feature_vector: ndarray
+            Features
+        target_vector: ndarray
+            Labels
+        metadata: dict<str, Any>:
+            Metadata for reconstructing the representation. Object contains two keys:
+            - "metadata": the relevant portions of the configuration which contributed to
+                the generation of these features
+            - "data": The computed bin boundaries for every type of every feature
+                - "feature-name":
+                    - tuple[type]: list<float>
+            Note if this information is to be serialised then it **must** be done so in a
+            way which conserves the order of the keys, as this is crucial to how the
+            representation is constructed and shuffling it destroys everything
 
 
     """
@@ -118,10 +135,13 @@ def autobin_mols(
                 desc="Histogramming",
             )
         ]
-    )
+    )  # zip converts from a list of pairs into a pair of lists
 
     # Save the type bins
-    ...
+    metadata = {
+        "metadata": cfg,
+        "data": {k: v for k, v in zip(accounted_features, type_bins)},
+    }
 
     # Concatenate the feature vectors
     hist_data = np.concatenate(
@@ -133,7 +153,7 @@ def autobin_mols(
     feature_vector = np.concatenate(
         (atom_vectors, amine_vectors, structure_vectors, hist_data), axis=1
     )
-    return target_vector, feature_vector
+    return feature_vector, target_vector, metadata
 
 
 def autobin_feature(
@@ -180,16 +200,8 @@ def autobin_feature(
     # Compute the bins for every type
     type_bins = _get_feature_bins(feature, graphing_callback, aggregate_data)
 
-    # Save the type bins...
-    # TODO: Save the bins in a structured way so they can be recovered
-
     # Go over the type bins and get the vectors for each molecule
     return _assign_feature_bins(type_bins, feature_data), type_bins
-
-
-def _write_out_bins(type_bins: TypeBinDict) -> None:
-    """Write type bins to the location specified in the config"""
-    ...
 
 
 def _get_feature_bins(

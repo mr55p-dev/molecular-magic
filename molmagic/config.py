@@ -1,4 +1,4 @@
-import yaml
+import oyaml as yaml
 
 
 with open("config.yml", "r") as f:
