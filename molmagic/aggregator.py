@@ -44,7 +44,7 @@ def bin_mols(
     hist_vectors = np.concatenate(binned_features)
 
     # put it all together
-    feature_vector = np.concatenate([static_representation, hist_vectors])
+    feature_vector = np.concatenate([static_representation, hist_vectors], axis=1)
 
     return feature_vector, target_vector
 
