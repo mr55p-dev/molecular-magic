@@ -6,9 +6,9 @@ from collections import defaultdict
 from functools import partial
 from typing import Callable
 from tqdm import tqdm
-from magic.graphing import get_plot_name, plot_histogram
-from magic.vectorizer import HistogramData, MoleculeData
-from magic.config import aggregation as cfg
+from molmagic.graphing import get_plot_name, plot_histogram
+from molmagic.vectorizer import HistogramData, MoleculeData
+from molmagic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
 import numpy as np
 
