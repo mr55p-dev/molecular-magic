@@ -2,7 +2,7 @@ from collections import defaultdict
 from itertools import islice
 from math import inf
 from pathlib import Path
-from molmagic.aggregator import assign_bin, data_to_bins
+from molmagic.aggregator import _assign_type_bins, _get_type_bins
 from molmagic.vectorizer import calculate_mol_data, _should_reverse
 from molmagic.parser import read_sdf_archive
 import pytest
@@ -68,11 +68,11 @@ def test_bin_generation():
         + [8] * 10
         + [9] * 5
     )
-    bins = data_to_bins(data)
+    bins = _get_type_bins(data)
     assert len(bins) == 2
 
     instance = np.array([-1, 2.5, 5, 7, 15])
     truth = np.array([1, 2, 2])
 
-    predicted = assign_bin(instance, bins)
+    predicted = _assign_type_bins(instance, bins)
     assert (predicted == truth).all()

@@ -4,7 +4,7 @@ creating vectors from those histograms
 """
 from collections import defaultdict
 from functools import partial
-from typing import Callable
+from typing import Callable, DefaultDict, TypeVar
 from tqdm import tqdm
 from molmagic.graphing import get_plot_name
 from molmagic.vectorizer import HistogramData, MoleculeData
@@ -18,8 +18,58 @@ from molmagic.graphing import draw_and_save_hist
 resolution = cfg["resolution"]
 bandwidth = cfg["bandwidth"]
 
+TypeBinDict = TypeVar("TypeBinDict", bound=dict[tuple[int], list[float]])
+TypeAggregate = TypeVar("TypeAggregate", bound=dict[tuple[int], list[float]])
 
-def compute_and_bin_mols(
+"""
+Steps:
+- Extract the mol data
+    - partially controlled by config.yml
+- Compute the atom frequency vector
+    - controlled by config.yml
+- Compute the amine degrees
+    - controlled by config.yml
+- Compute the histograms for each feature:
+    - Get the histogram based on the molecules
+    - Assign each molecule
+    - controlled by config.yml heavily
+
+
+Can store as YAML
+$(feature name):
+    - $(feature type):
+        - $(values)
+        - $(values)
+    - $(feature type):
+        - $(values)
+        - $(values)
+$(feature name):
+    - $(feature type):
+        - $(values)
+        - $(values)
+    - $(feature type):
+        - $(values)
+        - $(values)
+
+when calling safe_dump make sure to pass `sort_keys=False`
+Or use `oyaml`
+
+
+Methodology:
+- Load config.yml
+- Compute the atom frequency vectors
+- Compute the amine degrees
+- For each feature
+    - For each type
+        - Load the bin edges
+        - Bin each instance
+    - Concatenate all the types
+- Concatenate all the features
+
+"""
+
+
+def autobin_mols(
     mols: list[MoleculeData], plot_histograms: bool = False
 ) -> tuple[np.ndarray]:
     """Take an iterator of molecules, compute histograms based on the properties
@@ -55,9 +105,9 @@ def compute_and_bin_mols(
 
     # Get the histogam vectors. The features are defined in config
     accounted_features = cfg["feature-types"]
-    hist_data = np.concatenate(
-        [
-            compute_histogram_vectors(
+    feature_vectors, type_bins = zip(
+        *[
+            autobin_feature(
                 mols,
                 feature,
                 graphing_callback=draw_and_save_hist if plot_histograms else None,
@@ -67,7 +117,15 @@ def compute_and_bin_mols(
                 leave=False,
                 desc="Histogramming",
             )
-        ],
+        ]
+    )
+
+    # Save the type bins
+    ...
+
+    # Concatenate the feature vectors
+    hist_data = np.concatenate(
+        feature_vectors,
         axis=1,
     )
 
@@ -78,41 +136,125 @@ def compute_and_bin_mols(
     return target_vector, feature_vector
 
 
-def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
-    """Computes bins based on the sample of a KDE
+def autobin_feature(
+    mol_data: list[MoleculeData], feature: str, graphing_callback: Callable = None
+) -> tuple[np.ndarray, TypeBinDict]:
+    """Takes a dataset of molecules and a property to calculate and computes
+    histograms for every type of interaction (ie for bonds CC, CH) and then
+    bins every instance of each type in the dataset into a fixed-length vector
+    determined by the number of bins on each histogram for the property.
+
     ::args::
-        sample_values: ndarray
-            The values sampled from the KDE
-        method: "grad" | "diff" | "stationary"
-            The method to use for computing maxima and minima.
-            "grad" uses numpy's gradient compute feature to calculate the
-            gradient. Should be more accurate at the ends of each dataset
-            but is untested.
-            "diff" uses the first order differences in the data which works
-            well with a large number of samples in sample_values.
+        mol_data: list[MoleculeData]
+            Dataset of molecules with data extracted into the MoleculeData class
+        feature: str
+            Method of MoleculeData which points to a defaultdict where each key is a
+            type of the feature (ie CC, CH for bonds) and each value is a list of
+            values for that feature in the molecule
     ::returns::
-        maxima: ndarray
-            array corresponding to the value at which each bin occurs
-        assignment: ndarray
-            the bin assignment of each point in
-
+        vector: np.ndarray
+            NxM vector where N is the number of instances in the molecules argument
+            and M is determined by the number of features extracted and number of bins
+            for each feature extracted.
+            ie if we are looking at bonds, if the dataset contains CC, CH and CN bonds
+            there will be a histogram created for each of these. From the minima of the
+            KDE calculated for that histogram, there will be n+1 bins, where n is the
+            number of minima. So the size of M in the returned vector will be
+            n_bins_CC + n_bins_CH + n_bins_CN, where each of those values are determined
+            from the dataset itself.
     """
-    # Compute the derivitave based on these samples
-    if method == "grad":
-        # sample_derivitave = np.grad(sample_values, 1)
-        raise NotImplementedError(
-            "gradient-based differentiation is not yet implemented"
+    # Extract the property we want (this could be faster by accessing
+    # the object dict directly)
+    feature_data = [getattr(i, feature) for i in mol_data]
+
+    # Get every key from every dict in the molecules data and select
+    # only unique ones
+    feature_types = set(i for d in feature_data for i in d)
+
+    # Extract the per-type values for each instance
+    aggregate_data: HistogramData = defaultdict(list)
+    for feature_type in tqdm(feature_types, leave=False, desc="Aggregating type data"):
+        for instance in feature_data:
+            aggregate_data[feature_type].append(instance[feature_type])
+
+    # Compute the bins for every type
+    type_bins = _get_feature_bins(feature, graphing_callback, aggregate_data)
+
+    # Save the type bins...
+    # TODO: Save the bins in a structured way so they can be recovered
+
+    # Go over the type bins and get the vectors for each molecule
+    return _assign_feature_bins(type_bins, feature_data), type_bins
+
+
+def _write_out_bins(type_bins: TypeBinDict) -> None:
+    """Write type bins to the location specified in the config"""
+    ...
+
+
+def _get_feature_bins(
+    feature: str,
+    graphing_callback: Callable,
+    aggregate_data: TypeAggregate,
+) -> TypeBinDict:
+    """Compute the bins for each feature based on aggregate_data, a dict specifying
+    each type as a key and each value as a list of all the occurences in the dataset
+    ::args::
+        feature: str
+            The name of the feature, used if the graphing callback is specified
+        graphing_callback : callable
+            Function to call which generates and saves a plot of the histogram
+        aggregate_data : dict[type_key, list[float]]
+            Every occurence of each type in the dataset
+    """
+    # Extract this into a new function too
+    # Calcuate the bin boundaries for each type
+    type_bins = {}
+    for feature_type, values in tqdm(
+        aggregate_data.items(), leave=False, desc="Calculating bins"
+    ):
+        # Define fallback behaviour if there are fewer than N instances of a type
+        # in the dataset. For now, just ignore it
+        if len([i for j in values for i in j]) < 2:
+            continue
+        flat_values = np.concatenate(values).ravel()
+        type_bins[feature_type] = _get_type_bins(
+            flat_values,
+            graphing_callback=graphing_callback,
+            name=get_plot_name(feature, feature_type) if graphing_callback else None,
         )
-    elif method == "diff":
-        # sample_derivitave = np.diff(sample_values, 1)
-        raise NotImplementedError("derrivitave-based binning is not implemented")
 
-    # It might be more efficient to calculate where the derivitave crossed
-    # the x axis rather than this shift left and right stuff
-    return ...
+    return type_bins
 
 
-def data_to_bins(
+def _assign_feature_bins(
+    type_bins: TypeBinDict, feature_data: list[HistogramData]
+) -> np.ndarray:
+    """Take a series of bins and a series of molecules and assign them to their correct bins,
+    producing a fixed-length vector for each molecule
+    ::args::
+        type_bins : dict[type_key, list[bin_boundaries]]
+            The dictionary mapping each type key to the boundaries it has (computed by )
+    ::returns::
+    """
+    bin_col_vecs = []
+    for bin_key, bin_values in tqdm(
+        type_bins.items(), leave=False, desc="Assigning bins"
+    ):
+        f = partial(_assign_type_bins, bins=bin_values)
+        vecs = map(f, (i[bin_key] for i in feature_data))
+
+        # Append this columns data (which is a N x (M+1) vector)
+        # where N is the number of molecules and M is the number
+        # of bins
+        bin_col_vecs.append(np.stack(list(vecs)))
+
+    # Join the column vectors to get a feature matrix for all of the
+    # types within this feature
+    return np.concatenate(bin_col_vecs, axis=1)
+
+
+def _get_type_bins(
     data: np.ndarray, graphing_callback: Callable = None, name: tuple[str] = None
 ) -> np.ndarray:
     """Assign each point in data to a bin where the bin edges are
@@ -186,7 +328,7 @@ def data_to_bins(
     return bins
 
 
-def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
+def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     """Assign each value to a bin and return a vector where each item
     corresponds to the number of occurences of items falling into bin n
 
@@ -205,78 +347,3 @@ def assign_bin(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # TO-DO: This may be able to be improved using counter or list comprehension
 
     return vec
-
-
-def compute_histogram_vectors(
-    molecules: list[MoleculeData], feature: str, graphing_callback: Callable = None
-) -> np.ndarray:
-    """Takes a dataset of molecules and a property to calculate and computes
-    histograms for every type of interaction (ie for bonds CC, CH) and then
-    bins every instance of each type in the dataset into a fixed-length vector
-    determined by the number of bins on each histogram for the property.
-
-    ::args::
-        molecules: list[MoleculeData]
-            Dataset of molecules with data extracted into the MoleculeData class
-        feature: str
-            Method of MoleculeData which points to a defaultdict where each key is a
-            type of the feature (ie CC, CH for bonds) and each value is a list of
-            values for that feature in the molecule
-    ::returns::
-        vector: np.ndarray
-            NxM vector where N is the number of instances in the molecules argument
-            and M is determined by the number of features extracted and number of bins
-            for each feature extracted.
-            ie if we are looking at bonds, if the dataset contains CC, CH and CN bonds
-            there will be a histogram created for each of these. From the minima of the
-            KDE calculated for that histogram, there will be n+1 bins, where n is the
-            number of minima. So the size of M in the returned vector will be
-            n_bins_CC + n_bins_CH + n_bins_CN, where each of those values are determined
-            from the dataset itself.
-    """
-    # Extract the property we want (this could be faster by accessing
-    # the object dict directly)
-    feature_data = [getattr(i, feature) for i in molecules]
-
-    # Get every key from every dict in the molecules data and select
-    # only unique ones
-    feature_types = set(i for d in feature_data for i in d)
-
-    # Extract the per-type values for each instance
-    aggregate_data: HistogramData = defaultdict(list)
-    for feature_type in tqdm(feature_types, leave=False, desc="Aggregating type data"):
-        for instance in feature_data:
-            aggregate_data[feature_type].append(instance[feature_type])
-
-    # Calcuate the bin boundaries for each type
-    type_bins = {}
-    for feature_type, values in tqdm(
-        aggregate_data.items(), leave=False, desc="Calculating bins"
-    ):
-        # Define fallback behaviour if there are fewer than N instances of a type
-        # in the dataset. For now, just ignore it
-        if len([i for j in values for i in j]) < 2:
-            continue
-        flat_values = np.concatenate(values).ravel()
-        type_bins[feature_type] = data_to_bins(
-            flat_values,
-            graphing_callback=graphing_callback,
-            name=get_plot_name(feature, feature_type) if graphing_callback else None,
-        )
-
-    # Go over the type bins and get the vectors for each molecule
-    bin_col_vecs = []
-    for bin_key, bin_values in tqdm(
-        type_bins.items(), leave=False, desc="Assigning bins"
-    ):
-        f = partial(assign_bin, bins=bin_values)
-        vecs = map(f, (i[bin_key] for i in feature_data))
-
-        # Append this columns data (which is a N x (M+1) vector)
-        # where N is the number of molecules and M is the number
-        # of bins
-        bin_col_vecs.append(np.stack(list(vecs)))
-
-    # Join the column vectors to get a feature matrix for all of the
-    # types within this feature
-    return np.concatenate(bin_col_vecs, axis=1)

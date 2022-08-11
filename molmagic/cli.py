@@ -21,7 +21,7 @@ from tqdm import tqdm
 from molmagic import parser
 from molmagic.rules import filter_mols
 from molmagic import vectorizer
-from molmagic.aggregator import compute_and_bin_mols
+from molmagic.aggregator import autobin_mols
 from molmagic import config
 import numpy as np
 from pathlib import Path
@@ -97,7 +97,7 @@ def aggregate(args: Namespace) -> None:
     )
 
     # Compute and bin the molecules which have been extracted
-    target_vector, feature_vector = compute_and_bin_mols(mols, args.plot_histograms)
+    target_vector, feature_vector = autobin_mols(mols, args.plot_histograms)
 
     # Check the output path exists
     args.output.mkdir(exist_ok=True)
