@@ -15,6 +15,7 @@ import numpy as np
 
 # Get config vars
 resolution = cfg["resolution"]
+bandwidth = cfg["bandwidth"]
 
 
 def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
@@ -72,7 +73,7 @@ def data_to_bins(
             The boundaries of the histogram bins
     """
     # Calculate the KDE
-    kde = gaussian_kde(data)
+    kde = gaussian_kde(data, bw_method=bandwidth)
 
     # Original method samples the kde and computes derivatives
     # There is an option to use the MeanShift algorithm instead
