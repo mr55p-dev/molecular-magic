@@ -1,4 +1,3 @@
-
 ###################################################
 # Imports and initialisation                      #
 ###################################################
@@ -6,15 +5,16 @@
 import wandb
 
 import numpy as np
-import tensorflow as tf
 import optuna as op
+import tensorflow as tf
 
 from collections import defaultdict
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
 from wandb.keras import WandbCallback
+
 from magic.split import stoichiometric_split
 from magic.config import aggregation as cfg_aggregation, extraction as cfg_extraction
 
@@ -26,76 +26,87 @@ gpus = tf.config.list_logical_devices("GPU")
 # Dataset                                         #
 ###################################################
 
-# X = np.load("./auto_bandwidth_features/features.npy")
-# y = np.load("./auto_bandwidth_features/labels.npy").astype(np.double)
-X = np.load('./part1_vec/features.npy')
-y = np.load('./part1_vec/labels.npy').astype(np.double)
+X = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/features.npy")
+y = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/labels.npy").astype(np.double)
 
-# Use the MolE8 train_test_split logic
+# Using MolE8 train_test_split logic
 X_train, X_test, y_train, y_test = stoichiometric_split(
-    X, y, random_state=random_seed
-)
-
-# Use standard train_test_split logic
-# X_train, X_test, y_train, y_test = train_test_split(
-#     X, y, test_size=0.2, random_state=random_seed)
+    X, y, random_state=random_seed)
 
 ###################################################
 # Experimental setup                              #
 ###################################################
 
-batch_size = 64
+# Note: MolE8 uses batch size of 64
+
 epochs = 500
+
+# Define static learning rate
 # lr = 1e-5
 
-# Define learning rate schedule
+# Define learning rate schedule (batch size 64)
+batch_size = 64
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=[691 * 10, 691 * 30, 691 * 60, 691 * 400],
+    boundaries=[576 * 10, 576 * 30, 576 * 100, 576 * 400], 
     values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6],
     name="lr_decay",
 )
 
-# Build the model
-def objective(trial: op.Trial):
+# Define learning rate schedule (batch size 32) - seems less performat after preliminary tests
+# batch_size = 32
+# lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+#     boundaries=[1151 * 10, 1151 * 100, 1151 * 300], 
+#     values=[1e-3, 1e-4, 1e-5, 1e-6],
+#     name="lr_decay",
+# )
+
+
+def define_model(trial: op.Trial):
+    # Optimize the number of layers, and hidden units
+    n_layers = trial.suggest_int("n_layers", 2, 5)
+    units = trial.suggest_categorical("all_units", [64, 128, 256, 512])
 
     # Define model architecture
     model = keras.Sequential()
-    model.add(keras.layers.Input(shape=(len(X[0]))))
-    for i in range(trial.suggest_int("num_layers", 2, 5)):
+
+    # Append to the model
+    model.add(keras.layers.Input(shape=X.shape[1]))
+    for i in range(n_layers):
         model.add(keras.layers.Dense(
-            units=trial.suggest_categorical(f"l{i}_dims", [64, 128, 256]),
+            # units=trial.suggest_categorical(f"l{i}_dims", [64, 128, 256]),
+            units=units,
             activation="relu")
             )
     model.add(keras.layers.Dense(units=1, activation="linear"))
 
-    # Test different activation functions
+    # Test different activation functions: sigmoid, tanh, leaky relu, etc...
     # Test dropout layer...
 
     print("Defined model")
     print(model.summary())
 
+    return model
+
+def objective(trial: op.Trial):
+
+    # Generate the model
+    model = define_model(trial)
+
+    # Generate the optimizers
+    # optimizer_name = trial.suggest_categorical("optimizer", ["AdamW", "RMSprop", "SGD"])
+    # lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+    # optimizer = getattr(optim, optimizer_name)
     optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
     loss_function = keras.losses.MeanSquaredError()
 
     model.compile(
-        optimizer=optimizer,
-        loss=loss_function,
-        metrics=["mse", "mae"],
+    optimizer=optimizer,
+    loss=loss_function,
+    metrics=["mse", "mae"],
     )
-    print("Compiled model")
 
-    # Configure the weights and biases experiment
-    wandb_config = {
-        "trial_number": trial.number,
-        "training_params": {
-            "learning_rate": "20,40,400,1600,2800 st 1e-2",
-            "batch_size": batch_size,
-            "n_layers": trial.params["num_layers"],
-        },
-        "model_params": trial.params,
-        "parser_params": cfg_extraction,
-        "aggregation_params": cfg_aggregation,
-    }  # Automatically includes the parameters we are using
+    wandb_config = dict(trial.params) # Clean up the config? add aggregation?
+    wandb_config["trial.number"] = trial.number
     wandb.init(
         reinit=True,
         project="MolecularMagic",
@@ -112,54 +123,133 @@ def objective(trial: op.Trial):
         epochs=epochs,
         callbacks=[
             op.integration.TFKerasPruningCallback(trial, "val_loss"),
-            WandbCallback(monitor="val_loss", save_model=False, log_weights=True),
+            WandbCallback(monitor="val_loss", save_model=False, log_weights=False),
             # Consider early stopping callback
         ],
         validation_data=(X_test, y_test),
     )
 
-    # Mark the experiment as ended
-    wandb.finish(quiet=True)
+    wandb.finish() #quiet=True
 
-    return hist.history["val_loss"][-1]  # Return the end validation loss
+    return hist.history["val_loss"][-1]
 
 
-###################################################
-# Model training and logging                      #
-###################################################
+
 def generate_experiment_name(epochs, batch_size):
     now = datetime.now()
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
     return str(time_str + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
 
 exp_name = generate_experiment_name(epochs, batch_size)
-exp_name += "_lrsched"
-
-# Setup the hyperparmeter search
-# This is if you want to use optunas local optuna-dashboard system, which is pretty good
-# but not really as good as wandb
-# storage = op.storages.RedisStorage(
-#     url="redis://localhost:6379/optuna",
-# )
+exp_name += "_preliminary_testing"
 
 storage = op.storages.InMemoryStorage()
 pruner = op.pruners.HyperbandPruner()
+# pruner = op.pruners.MedianPruner()
 sampler = op.samplers.RandomSampler(
     seed=random_seed
 )  # There are some more options in optuna that work well
 
 study = op.create_study(
+    direction="minimize",
     study_name=exp_name,
     storage=storage,
-    sampler=sampler,
-    pruner=pruner,
-    direction="minimize",
+    # pruner=pruner,
+    # sampler=sampler,
 )
 
-# Run the optimization
 study.optimize(
     objective,
-    n_trials=1,
+    # n_trials=100,
 )
 
-# TO-DO: Get rid of timestamp command line output
+#     optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
+#     loss_function = keras.losses.MeanSquaredError()
+
+
+
+#     model.compile(
+#         optimizer=optimizer,
+#         loss=loss_function,
+#         metrics=["mse", "mae"],
+#     )
+#     print("Compiled model")
+
+#     # Configure the weights and biases experiment
+#     wandb_config = {
+#         "trial_number": trial.number,
+#         "training_params": {
+#             "learning_rate": "schedule",
+#             "batch_size": batch_size,
+#             "num_layers": trial.params["num_layers"],
+#             "all_dims": trial.params["all_dims"]
+#         },
+#         "model_params": trial.params,
+#         "parser_params": cfg_extraction,
+#         "aggregation_params": cfg_aggregation,
+#     }  # Automatically includes the parameters we are using
+#     wandb.init(
+#         reinit=True,
+#         project="MolecularMagic",
+#         entity="molecular-magicians",
+#         group=exp_name,
+#         config=wandb_config,
+#     )
+
+#     # Fit the model
+#     hist = model.fit(
+#         x=X_train,
+#         y=y_train,
+#         batch_size=batch_size,
+#         epochs=epochs,
+#         callbacks=[
+#             op.integration.TFKerasPruningCallback(trial, "val_loss"),
+#             WandbCallback(monitor="val_loss", save_model=False, log_weights=True),
+#             # Consider early stopping callback
+#         ],
+#         validation_data=(X_test, y_test),
+#     )
+
+#     # Mark the experiment as ended
+#     # wandb.finish(quiet=True)
+
+#     return hist.history["val_loss"][-1]  # Return the end validation loss
+
+
+# ###################################################
+# # Model training and logging                      #
+# ###################################################
+# def generate_experiment_name(epochs, batch_size):
+#     now = datetime.now()
+#     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
+#     return str(time_str + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
+
+# exp_name = generate_experiment_name(epochs, batch_size)
+# exp_name += "_preliminary_testing"
+
+# # Setup the hyperparmeter search
+# # This is if you want to use optunas local optuna-dashboard system, which is pretty good
+# # but not really as good as wandb
+# # storage = op.storages.RedisStorage(
+# #     url="redis://localhost:6379/optuna",
+# # )
+
+# storage = op.storages.InMemoryStorage()
+# pruner = op.pruners.HyperbandPruner()
+# sampler = op.samplers.RandomSampler(
+#     seed=random_seed
+# )  # There are some more options in optuna that work well
+
+# study = op.create_study(
+#     study_name=exp_name,
+#     storage=storage,
+#     sampler=sampler,
+#     pruner=pruner,
+#     direction="minimize",
+# )
+
+# # Run the optimization
+# study.optimize(
+#     objective,
+#     # n_trials=1,
+# )
