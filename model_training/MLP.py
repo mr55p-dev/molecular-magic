@@ -39,7 +39,7 @@ X_train, X_test, y_train, y_test = stoichiometric_split(
 
 # Note: MolE8 uses batch size of 64
 
-epochs = 500
+epochs = 800
 
 # Define static learning rate
 # lr = 1e-5
@@ -47,8 +47,8 @@ epochs = 500
 # Define learning rate schedule (batch size 64)
 batch_size = 64
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=[576 * 10, 576 * 30, 576 * 100, 576 * 400], 
-    values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6],
+    boundaries=[576 * 10, 576 * 30, 576 * 300], 
+    values=[1e-2, 1e-3, 1e-4, 1e-5],
     name="lr_decay",
 )
 
@@ -63,8 +63,10 @@ lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
 
 def define_model(trial: op.Trial):
     # Optimize the number of layers, and hidden units
-    n_layers = trial.suggest_int("n_layers", 2, 5)
-    units = trial.suggest_categorical("all_units", [64, 128, 256, 512])
+    n_layers = trial.suggest_int("n_layers", 2, 4)
+    units = trial.suggest_categorical("all_units", [256, 512])
+    dropout_rate = trial.suggest_categorical("dropout_rate", [0, 0.1])
+    activation_function = trial.suggest_categorical("activation_function", ["sigmoid", "relu", "tanh"])
 
     # Define model architecture
     model = keras.Sequential()
@@ -75,8 +77,10 @@ def define_model(trial: op.Trial):
         model.add(keras.layers.Dense(
             # units=trial.suggest_categorical(f"l{i}_dims", [64, 128, 256]),
             units=units,
-            activation="relu")
+            kernel_constraint=keras.constraints.unit_norm(),
+            activation=activation_function)
             )
+    model.add(keras.layers.Dropout(rate=dropout_rate))
     model.add(keras.layers.Dense(units=1, activation="linear"))
 
     # Test different activation functions: sigmoid, tanh, leaky relu, etc...
@@ -124,6 +128,7 @@ def objective(trial: op.Trial):
         callbacks=[
             op.integration.TFKerasPruningCallback(trial, "val_loss"),
             WandbCallback(monitor="val_loss", save_model=False, log_weights=False),
+            keras.callbacks.EarlyStopping(monitor='val_loss', mode="min", patience=40)
             # Consider early stopping callback
         ],
         validation_data=(X_test, y_test),
@@ -154,8 +159,8 @@ study = op.create_study(
     direction="minimize",
     study_name=exp_name,
     storage=storage,
-    # pruner=pruner,
-    # sampler=sampler,
+    pruner=pruner,
+    sampler=sampler,
 )
 
 study.optimize(
