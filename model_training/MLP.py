@@ -39,18 +39,18 @@ X_train, X_test, y_train, y_test = stoichiometric_split(
 
 # Note: MolE8 uses batch size of 64
 
-epochs = 800
+epochs = 1000
 
 # Define static learning rate
 # lr = 1e-5
 
 # Define learning rate schedule (batch size 64)
-batch_size = 64
-lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=[576 * 10, 576 * 30, 576 * 300], 
-    values=[1e-2, 1e-3, 1e-4, 1e-5],
-    name="lr_decay",
-)
+
+# lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+#     boundaries=[576 * 10, 576 * 30, 576 * 300], 
+#     values=[1e-2, 1e-3, 1e-4, 1e-5],
+#     name="lr_decay",
+# )
 
 # Define learning rate schedule (batch size 32) - seems less performat after preliminary tests
 # batch_size = 32
@@ -63,10 +63,12 @@ lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
 
 def define_model(trial: op.Trial):
     # Optimize the number of layers, and hidden units
-    n_layers = trial.suggest_int("n_layers", 2, 4)
-    units = trial.suggest_categorical("all_units", [256, 512])
+    n_layers = trial.suggest_int("n_layers", 2, 5)
+    units = trial.suggest_categorical("all_units", [256, 512, 1024]) # units=trial.suggest_categorical(f"l{i}_dims", [64, 128, 256]),
     dropout_rate = trial.suggest_categorical("dropout_rate", [0, 0.1])
-    activation_function = trial.suggest_categorical("activation_function", ["sigmoid", "relu", "tanh"])
+    activation_function = trial.suggest_categorical("activation_function", ["relu"])
+    kernel_constraint = trial.suggest_categorical("kernel_constraint", [False]) # kernel_constraint = keras.constraints.unit_norm(),
+    activity_regularizer = trial.suggest_categorical("activity_regularizer", ["l1", "l2", "None"])
 
     # Define model architecture
     model = keras.Sequential()
@@ -74,12 +76,29 @@ def define_model(trial: op.Trial):
     # Append to the model
     model.add(keras.layers.Input(shape=X.shape[1]))
     for i in range(n_layers):
-        model.add(keras.layers.Dense(
-            # units=trial.suggest_categorical(f"l{i}_dims", [64, 128, 256]),
-            units=units,
-            kernel_constraint=keras.constraints.unit_norm(),
-            activation=activation_function)
-            )
+        if activity_regularizer == "l1":
+            model.add(keras.layers.Dense(
+                units = units,
+                activity_regularizer = keras.regularizers.L1(0.001),
+                activation = activation_function
+                ))
+        elif activity_regularizer == "l2":
+            model.add(keras.layers.Dense(
+                units = units,
+                activity_regularizer = keras.regularizers.L2(0.001),
+                activation = activation_function
+                ))
+        else:
+            model.add(keras.layers.Dense(
+                units = units,
+                activity_regularizer = None,
+                activation = activation_function
+                ))
+        # model.add(keras.layers.Activation())
+
+    # Batch Normalisation: https://keras.io/api/layers/normalization_layers/batch_normalization/
+    # https://stackoverflow.com/questions/34716454/where-do-i-call-the-batchnormalization-function-in-keras
+
     model.add(keras.layers.Dropout(rate=dropout_rate))
     model.add(keras.layers.Dense(units=1, activation="linear"))
 
@@ -100,7 +119,12 @@ def objective(trial: op.Trial):
     # optimizer_name = trial.suggest_categorical("optimizer", ["AdamW", "RMSprop", "SGD"])
     # lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     # optimizer = getattr(optim, optimizer_name)
-    optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
+
+    batch_size = trial.suggest_categorical("batch_size", [32, 64])
+    lr = trial.suggest_categorical("learning_rate", [1e-5, 1e-4])
+
+    optimizer = keras.optimizers.Adam(learning_rate=lr)
+    # optimizer = trial.suggest_categorical("optimizer", ["Adam", "SGD"])
     loss_function = keras.losses.MeanSquaredError()
 
     model.compile(
@@ -128,7 +152,7 @@ def objective(trial: op.Trial):
         callbacks=[
             op.integration.TFKerasPruningCallback(trial, "val_loss"),
             WandbCallback(monitor="val_loss", save_model=False, log_weights=False),
-            keras.callbacks.EarlyStopping(monitor='val_loss', mode="min", patience=40)
+            keras.callbacks.EarlyStopping(monitor='val_loss', mode="min", patience=30)
             # Consider early stopping callback
         ],
         validation_data=(X_test, y_test),
@@ -140,12 +164,12 @@ def objective(trial: op.Trial):
 
 
 
-def generate_experiment_name(epochs, batch_size):
+def generate_experiment_name(epochs):
     now = datetime.now()
     time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
-    return str(time_str + "_" + str(epochs) + "ep_" + str(batch_size) + "bs")
+    return str(time_str + "_" + str(epochs) + "ep_")
 
-exp_name = generate_experiment_name(epochs, batch_size)
+exp_name = generate_experiment_name(epochs)
 exp_name += "_preliminary_testing"
 
 storage = op.storages.InMemoryStorage()
