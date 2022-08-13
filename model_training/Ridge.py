@@ -1,11 +1,8 @@
 from distutils.log import Log
 import numpy as np
 from sklearn.metrics import mean_absolute_error
-from magic.split import stoichiometric_split
+from molmagic.split import stoichiometric_split
 # from sklearn.model_selection import train_test_split
-
-from sklearn.linear_model import Ridge
-from sklearn.ensemble import AdaBoostRegressor
 
 random_seed = 50
 
@@ -16,11 +13,11 @@ y = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/labels.npy").
 X_train, X_test, y_train, y_test = stoichiometric_split(
     X, y, random_state=random_seed)
 
+from sklearn.linear_model import Ridge
 
-
-reg = AdaBoostRegressor(base_estimator=Ridge(), random_state=random_seed)
+reg = Ridge()
 reg.fit(X_train, y_train)
 y_pred = reg.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
 
-print(mae) # Achieves a MAE of 4.79
+print(mae) # MAE 14

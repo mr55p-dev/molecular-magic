@@ -1,7 +1,7 @@
 from distutils.log import Log
 import numpy as np
 from sklearn.metrics import mean_absolute_error
-from magic.split import stoichiometric_split
+from molmagic.split import stoichiometric_split
 # from sklearn.model_selection import train_test_split
 
 from sklearn.linear_model import SGDRegressor

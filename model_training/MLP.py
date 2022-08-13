@@ -63,8 +63,8 @@ lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
 
 def define_model(trial: op.Trial):
     # Optimize the number of layers, and hidden units
-    n_layers = trial.suggest_int("n_layers", 3, 5)
-    units = trial.suggest_categorical("all_units", [256, 512]) # units=trial.suggest_categorical(f"l{i}_dims", [64, 128, 256]),
+    n_layers = trial.suggest_int("n_layers", 3, 6)
+    # units = trial.suggest_categorical("all_units", [64, 128]) 
     dropout_rate = trial.suggest_categorical("dropout_rate", [0])
     activation_function = trial.suggest_categorical("activation_function", ["relu"])
     kernel_constraint = trial.suggest_categorical("kernel_constraint", [False]) # kernel_constraint = keras.constraints.unit_norm(),
@@ -76,6 +76,7 @@ def define_model(trial: op.Trial):
     # Append to the model
     model.add(keras.layers.Input(shape=X.shape[1]))
     for i in range(n_layers):
+        units = trial.suggest_categorical(f"l{i}_dims", [256, 512, 1024])
         if activity_regularizer == "l1":
             model.add(keras.layers.Dense(
                 units = units,
