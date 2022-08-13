@@ -6,15 +6,16 @@ from collections import defaultdict
 from functools import partial
 from typing import Callable
 from tqdm import tqdm
-from magic.graphing import get_plot_name, plot_histogram
-from magic.vectorizer import HistogramData, MoleculeData
-from magic.config import aggregation as cfg
+from molmagic.graphing import get_plot_name, plot_histogram
+from molmagic.vectorizer import HistogramData, MoleculeData
+from molmagic.config import aggregation as cfg
 from scipy.stats import gaussian_kde
 import numpy as np
 
 
 # Get config vars
 resolution = cfg["resolution"]
+bandwidth = cfg["bandwidth"]
 
 
 def _compute_bins(sample_values: np.ndarray, method=str) -> np.ndarray:
@@ -72,7 +73,7 @@ def data_to_bins(
             The boundaries of the histogram bins
     """
     # Calculate the KDE
-    kde = gaussian_kde(data)
+    kde = gaussian_kde(data, bw_method=bandwidth)
 
     # Original method samples the kde and computes derivatives
     # There is an option to use the MeanShift algorithm instead

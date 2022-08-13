@@ -2,9 +2,9 @@ from collections import defaultdict
 from itertools import islice
 from math import inf
 from pathlib import Path
-from magic.aggregator import assign_bin, data_to_bins
-from magic.vectorizer import calculate_mol_data, _should_reverse
-from magic.parser import read_sdf_archive
+from molmagic.aggregator import assign_bin, data_to_bins
+from molmagic.vectorizer import calculate_mol_data, _should_reverse
+from molmagic.parser import read_sdf_archive
 import pytest
 import numpy as np
 

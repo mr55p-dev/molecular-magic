@@ -2,7 +2,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from magic.config import aggregation
+from molmagic.config import aggregation
 
 
 cfg = aggregation["plotting"]
