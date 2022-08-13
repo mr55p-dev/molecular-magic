@@ -15,8 +15,8 @@ from datetime import datetime
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
 from wandb.keras import WandbCallback
-from magic.split import stoichiometric_split
-from magic.config import aggregation as cfg_aggregation, extraction as cfg_extraction
+from molmagic.split import stoichiometric_split
+from molmagic.config import aggregation as cfg_aggregation, extraction as cfg_extraction
 
 random_seed = 50
 tf.random.set_seed(random_seed)

@@ -18,12 +18,12 @@ from argparse import ArgumentParser, Namespace
 import bz2
 
 from tqdm import tqdm
-from magic import parser
-from magic.rules import filter_mols
-from magic import vectorizer
-from magic import aggregator
-from magic import config
-from magic.graphing import plot_histogram
+from molmagic import parser
+from molmagic.rules import filter_mols
+from molmagic import vectorizer
+from molmagic import aggregator
+from molmagic import config
+from molmagic.graphing import plot_histogram
 import numpy as np
 from pathlib import Path
 import sys
