@@ -57,6 +57,12 @@ def parse(args: Namespace) -> None:
     # Filter this list to remove any bad objects
     mol_subset = filter(filter_mols, mol)
 
+    # If we are not given a file, write this to stdout **uncompressed**
+    if not outpath:
+        for mol in mol_subset:
+            sys.stdout.write(mol.write(format=config.extraction["output-format"]))
+        return 0
+
     # Check the ouptut directory exists, and create if it does not
     outpath.parent.mkdir(parents=True, exist_ok=True)
     if not outpath.name.endswith(".sdf.bz2"):
@@ -171,9 +177,7 @@ def main(argv=sys.argv):
         """,
     )
     parser.add_argument(
-        "-i",
-        "--input",
-        required=True,
+        "input",
         type=Path,
         help="""Pass the directory which contains the input files. Note this
         can be a folder of folders; any `*f.out` files processed by `g09` in
@@ -182,7 +186,7 @@ def main(argv=sys.argv):
     parser.add_argument(
         "-o",
         "--output",
-        required=True,
+        required=False,
         type=Path,
         help="""The output SDF archive. Instances have a sdf_energy
         key which contains the extracted energy. File is saved as a
