@@ -27,5 +27,8 @@ aggregation:
     # - "angles"
     # - "dihedrals"
     # - "hbonds"
-  plotting:
-    save-dir: "./figures/scott"
+plotting:
+  save-dir: "./figures/scott"
+  show-dist: true
+  show-kde: true
+  plot-style: "whitegrid"

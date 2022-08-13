@@ -7,3 +7,4 @@ with open("config.yml", "r") as f:
 
 extraction = configuration["extraction"]
 aggregation = configuration["aggregation"]
+plotting = configuration["plotting"]
