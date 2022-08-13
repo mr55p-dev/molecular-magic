@@ -20,7 +20,6 @@ import bz2
 import oyaml as yaml
 from tqdm import tqdm
 from molmagic import parser
-from molmagic.rules import filter_mols
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
 from molmagic import config
@@ -52,11 +51,7 @@ def parse(args: Namespace) -> None:
     # TODO: #70 use shell globbing and take a list of paths as args.input
     matched_paths = list(basepath.glob("./**/*f.out"))
 
-    # Read those files and extract geometries and scf energies
-    mol = map(parser.read_dft_frequency, matched_paths)
-
-    # Filter this list to remove any bad objects
-    mol_subset = filter(filter_mols, mol)
+    mol_subset = parser.parse_files(matched_paths)
 
     # If we are not given a file, write this to stdout **uncompressed**
     if not outpath:
