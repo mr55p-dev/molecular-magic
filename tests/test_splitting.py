@@ -1,4 +1,4 @@
-from magic.split import stoichiometric_split
+from molmagic.split import stoichiometric_split
 import numpy as np
 
 

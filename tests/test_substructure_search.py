@@ -1,7 +1,7 @@
 import openbabel.openbabel as ob
 import pytest
 import openbabel.pybel as pb
-from magic.vectorizer import _search_substructure
+from molmagic.vectorizer import _search_substructure
 
 
 def generate_mol(smiles_str) -> ob.OBMol:

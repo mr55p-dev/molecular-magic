@@ -7,7 +7,7 @@ from typing import Any, DefaultDict, Generator, Iterator, TypeVar
 from openbabel import pybel as pb
 from openbabel import openbabel as ob
 from collections import Counter, defaultdict, namedtuple
-from magic.config import extraction as cfg
+from molmagic.config import extraction as cfg
 from numpy import sign
 
 

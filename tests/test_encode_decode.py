@@ -1,7 +1,7 @@
 import argparse
 import openbabel.pybel as pb
-from magic.parser import read_sdf_archive
-from magic.cli import parse
+from molmagic.parser import read_sdf_archive
+from molmagic.cli import parse
 from pathlib import Path
 import pytest
 

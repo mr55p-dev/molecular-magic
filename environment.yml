@@ -1,4 +1,4 @@
-name: molemagic
+name: molmagic
 channels:
   - conda-forge
 dependencies:
@@ -16,7 +16,6 @@ dependencies:
     - plotly==5.8.2
     - psutil==5.8.0
     - PyOpenGL==3.1.6
-    - PyQt5==5.15.7
     - pytest==7.1.2
     - pytest-dependency==0.5.1
     - seaborn==0.11.2
