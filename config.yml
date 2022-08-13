@@ -24,9 +24,9 @@ aggregation:
     - 3
   feature-types:
     - "bonds"
-    # - "angles"
-    # - "dihedrals"
-    # - "hbonds"
+    - "angles"
+    - "dihedrals"
+    - "hbonds"
 plotting:
   save-dir: "./figures/scott"
   show-dist: true
