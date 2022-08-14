@@ -13,9 +13,9 @@ y = np.load("/home/luke/code/molecular-magic/mole8rep/labels.npy").astype(np.dou
 X_train, X_test, y_train, y_test = stoichiometric_split(
     X, y, random_state=random_seed)
 
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import RidgeCV
 
-reg = Ridge()
+reg = RidgeCV()
 reg.fit(X_train, y_train)
 y_pred = reg.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)

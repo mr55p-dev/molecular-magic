@@ -25,8 +25,11 @@ gpus = tf.config.list_logical_devices("GPU")
 # Dataset                                         #
 ###################################################
 
-X = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/features.npy")
-y = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/labels.npy").astype(np.double)
+# X = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/features.npy")
+# y = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/labels.npy").astype(np.double)
+
+X = np.load("/home/luke/code/molecular-magic/mole8rep/features.npy")
+y = np.load("/home/luke/code/molecular-magic/mole8rep/labels.npy").astype(np.double)
 
 # Using MolE8 train_test_split logic
 X_train, X_test, y_train, y_test = stoichiometric_split(
@@ -38,15 +41,15 @@ X_train, X_test, y_train, y_test = stoichiometric_split(
 
 # Note: MolE8 uses batch size of 64
 
-epochs = 1200
+epochs = 600
 
 # Define static learning rate
 # lr = 1e-5
 
 # Define learning rate schedule (batch size 64)
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=[576 * 100, 576 * 200, 576 * 400], 
-    values=[1e-4, 1e-5, 1e-6, 1e-7],
+    boundaries=[576 * 100, 576 * 300], # 576 * 500
+    values=[1e-4, 1e-5, 1e-6], # , 1e-7
     name="lr_decay",
 )
 
@@ -63,12 +66,12 @@ lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
 
 def define_model(trial: op.Trial):
     # Optimize the number of layers, and hidden units
-    n_layers = trial.suggest_int("n_layers", 3, 6)
+    n_layers = trial.suggest_int("n_layers", 3, 5)
     # units = trial.suggest_categorical("all_units", [64, 128]) 
     dropout_rate = trial.suggest_categorical("dropout_rate", [0])
     activation_function = trial.suggest_categorical("activation_function", ["relu"])
     kernel_constraint = trial.suggest_categorical("kernel_constraint", [False]) # kernel_constraint = keras.constraints.unit_norm(),
-    activity_regularizer = trial.suggest_categorical("activity_regularizer", ["l1", "l2", "None"])
+    activity_regularizer = trial.suggest_categorical("activity_regularizer", ["l2", "None"])
 
     # Define model architecture
     model = keras.Sequential()
@@ -76,17 +79,17 @@ def define_model(trial: op.Trial):
     # Append to the model
     model.add(keras.layers.Input(shape=X.shape[1]))
     for i in range(n_layers):
-        units = trial.suggest_categorical(f"l{i}_dims", [256, 512, 1024])
+        units = trial.suggest_categorical(f"l{i}_dims", [256, 512, 768])
         if activity_regularizer == "l1":
             model.add(keras.layers.Dense(
                 units = units,
-                activity_regularizer = keras.regularizers.L1(0.01),
+                activity_regularizer = keras.regularizers.L1(0.1), #prev tests at 0.01
                 activation = activation_function
                 ))
         elif activity_regularizer == "l2":
             model.add(keras.layers.Dense(
                 units = units,
-                activity_regularizer = keras.regularizers.L2(0.01),
+                activity_regularizer = keras.regularizers.L2(0.1), #prev tests at 0.01
                 activation = activation_function
                 ))
         else:
@@ -121,7 +124,7 @@ def objective(trial: op.Trial):
     # lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     # optimizer = getattr(optim, optimizer_name)
 
-    batch_size = trial.suggest_categorical("batch_size", [32, 64])
+    batch_size = trial.suggest_categorical("batch_size", [64])
     lr = trial.suggest_categorical("learning_rate", ["custom 1e-4,-5,-6"])
 
     optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
@@ -153,7 +156,7 @@ def objective(trial: op.Trial):
         callbacks=[
             op.integration.TFKerasPruningCallback(trial, "val_loss"),
             WandbCallback(monitor="val_loss", save_model=False, log_weights=False),
-            keras.callbacks.EarlyStopping(monitor='val_loss', mode="min", patience=40)
+            keras.callbacks.EarlyStopping(monitor='val_loss', mode="min", patience=15)
             # Consider early stopping callback
         ],
         validation_data=(X_test, y_test),

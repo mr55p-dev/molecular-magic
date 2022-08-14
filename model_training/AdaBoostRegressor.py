@@ -10,8 +10,8 @@ from sklearn.ensemble import AdaBoostRegressor
 random_seed = 50
 
 # We are focusing on the prediction of free energy (this is the target)
-X = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/features.npy")
-y = np.load("/home/luke/code/molecular-magic/autoband_badh_freeeng/labels.npy").astype(np.double)
+X = np.load("/home/luke/code/molecular-magic/mole8rep/features.npy")
+y = np.load("/home/luke/code/molecular-magic/mole8rep/labels.npy").astype(np.double)
 
 X_train, X_test, y_train, y_test = stoichiometric_split(
     X, y, random_state=random_seed)
