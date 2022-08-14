@@ -1,6 +1,6 @@
 import argparse
 import openbabel.pybel as pb
-from molmagic.parser import read_sdf_archive
+from molmagic.parser import read_sdf_archive, read_qm9_dir
 from molmagic.cli import parse
 from pathlib import Path
 import pytest
@@ -33,3 +33,9 @@ def test_decode():
 
     # Check the energy can be cast to float and is negative
     assert float(first_mol.data["scf_energy"]) < 0
+
+
+def test_qm9():
+    mols = read_qm9_dir("data/qm9/dsgdb9nsd.xyz/")
+    a = next(mols)
+    print("hello")

@@ -16,6 +16,7 @@ Depends on `cclib` and `bz2`.
 """
 from argparse import ArgumentParser, Namespace
 import bz2
+from os import PathLike
 
 import oyaml as yaml
 from tqdm import tqdm
@@ -59,29 +60,7 @@ def parse(args: Namespace) -> None:
             sys.stdout.write(mol.write(format=config.extraction["output-format"]))
         return 0
 
-    # Check the ouptut directory exists, and create if it does not
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    if not outpath.name.endswith(".sdf.bz2"):
-        outpath = outpath.with_suffix(".sdf.bz2")
-
-    # Create a compression object
-    compressor = bz2.BZ2Compressor()
-
-    # Write appropriate objects into outpath under the same filename
-    with outpath.open("wb") as buffer:
-        # Iterate the molecules
-        for mol in tqdm(mol_subset, total=len(matched_paths)):
-            # Pybel returns a string if no output file is provided
-            raw_output: str = mol.write(format=config.extraction["output-format"])
-            # Encode the string to utf8 bytes
-            bytes_output = raw_output.encode("utf-8")
-            # Compress those bytes
-            compressed_output = compressor.compress(bytes_output)
-            # Stream them into the output file
-            buffer.write(compressed_output)
-
-        # Make sure nothing gets left behind in the compressor
-        buffer.write(compressor.flush())
+    parser.write_compressed_sdf(mol_subset, outpath, len(matched_paths))
 
 
 def vectorize(args: Namespace) -> None:
