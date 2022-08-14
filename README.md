@@ -47,24 +47,30 @@ Much of the configuration for feature generation is controlled via `config.yml`.
 
 ### 0. Set up the environment
 - Clone this repo and install the anaconda environment with `conda env create -f environment.yml`. This downlads the correct version of python and all its dependencies.
-  - Activate the environment with `conda activate molemagic`
-- Once this is done, install the `magic` module locally using pip. Run the command `pip install -e .` to install the script endpoints in your environment.
-  - Running the command `molmagic` in your terminal should print out the help message for the tool
+  - Activate the environment with `conda activate molmagic`
+- Once this is done, install the `molmagic` module locally using pip. Run the command `pip install -e .` to install the script endpoints in your environment.
+  - Running the command `magic` in your terminal should print out the help message for the tool
 - Download the dataset zip files from the [University of Nottingham repository](https://unow.nottingham.ac.uk/handle/internal/9356?show=full).
   - Create a folder called `moldata` in the repo folder and extract the files there.
 ### 1. Create cleaned annotated sdf files
-- Run `molmagic parser -i <path_to_moldata_directory> -o <path_to_output_file>`, where `<path_to_output_file> specifies the path to a file which does not yet exist.
+- Run `magic parser <path_to_moldata_directory> -o <path_to_output_file>`,
   - The input directory should contain frequency files for all the structures to be analysed. The parser command will walk through all subdirectories of the one specified so there is no need to unpack every file into the same directory.
-  - Note that the order in the output is not guaranteed to be the same as the input (and is not likely to be either).
-  - The output file you provide will be appended with the extension `.sdf.bz2`.
-  - Running the command `molmagic parser -i ./moldata -o ./cleaned_data` will result in a reading all `g09` frequency files from `moldata` and writing molecular structures and energies into a `bz2` archive using the `sdf` format, `./cleaned_data.sdf.bz2`.
-- Running this command should display a progress bar, and after a short duration the command should exit, leaving behind the file specified after the `-o` flag in your command.
-
+  - Right now we use `pathlib.Path.glob`, so there is no order-consistency guarantee.
+  - `-o` is an optional argument,
+    - if provided, a **bz2 compressed** `sdf` formatted file is written to the destination file specified.
+    - else, the **uncompressed** `sdf` formatted data will be written to `stdout`.
+  - Running the command `magic parser ./moldata -o ./cleaned_data` will read all `g09` frequency files from `moldata` and writing atom positions and computed properties to a **compressed** `sdf` file `./cleaned_data.sdf.bz2`.
+  - Running the command `magic parser ./moldata > output.sdf` will write an **uncompressed** sdf file `output.sdf` as we are making use of the shell redirection tricks.
 ### 2. Generate npy feature vectors
-- Run `molmagic vectorizer -i <path_to_cleaned_annotated_sdf_file> -o <path_to_feature_vector_files>`, where <path_to_feature_vector_files> specifies a file which does not yet exist.
-- The utility `molmagic vectorizer` can be used to convert a `.sdf.bz2` archive into saved numpy vectors (`.npx` files). Run `molmagic vectorizer -h` to see the required arguments.
-- The syntax is the same as for the parser; use the `-i` flag to specify the input file (in this case it should be `path/to/output/of/parser.sdf.bz2`) and the `-o` flag to specify a directory. This directory will be created if it does not exist. There will be two new files created in that directory specified, `features.npy` and `labels.npy`. Labels will be extracted based on the **sdf key** speficied in `config.yml`.
-- The flag `--plot-histograms` can be used, and will output png files to the directory specified in `config.yml:plotting:save-dir`. These are to help visualise exactly what the algorithm is doing
+- Run `magic vectorizer <path_to_annotated_sdf_file> -o <output_dir>`
+- The utility `magic vectorizer` can be used to convert a `.sdf.bz2` archive into saved numpy vectors (`.npx` files).
+- The syntax is the same as for the parser; specify the input file (in this case it should be `path/to/output/of/parser.sdf.bz2`) and the `-o` flag to optionally specify an output directory.
+- To generate a representation based on the molecules in the archive, do not pass the `-m`/`--metadata` flag.
+  - There will be three new files created in that directory specified, `features.npy`, `labels.npy` and `metadata.yaml`.
+  - `metadata.yaml` is used later on to enable converting molecules into this vector scheme using the same histograms.
+- To generate a representation based on the results of a previous run, pass the `-m`/`--metadata` flag with the path to the `metadata.yml` file which was created for the run you wish to use.
+- The flag `--plot-histograms` can be used when generating a new representation, and will output png files to the directory specified in `config.yml:plotting:save-dir`. These are to help visualise exactly what the algorithm is doing
+- The labels in `labels.npy` will be extracted based on the **label-name** speficied in `config.yml`.
 ### 3. Machine Learning Code...
 
 ----

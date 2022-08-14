@@ -17,13 +17,13 @@ Depends on `cclib` and `bz2`.
 from argparse import ArgumentParser, Namespace
 import bz2
 
+import oyaml as yaml
 from tqdm import tqdm
 from molmagic import parser
 from molmagic.rules import filter_mols
 from molmagic import vectorizer
-from molmagic import aggregator
+from molmagic.aggregator import autobin_mols, bin_mols
 from molmagic import config
-from molmagic.graphing import plot_histogram
 import numpy as np
 from pathlib import Path
 import sys
@@ -49,6 +49,7 @@ def parse(args: Namespace) -> None:
 
     # Walk the basepath directory and discover all the
     # g09 formatted output files
+    # TODO: #70 use shell globbing and take a list of paths as args.input
     matched_paths = list(basepath.glob("./**/*f.out"))
 
     # Read those files and extract geometries and scf energies
@@ -56,6 +57,12 @@ def parse(args: Namespace) -> None:
 
     # Filter this list to remove any bad objects
     mol_subset = filter(filter_mols, mol)
+
+    # If we are not given a file, write this to stdout **uncompressed**
+    if not outpath:
+        for mol in mol_subset:
+            sys.stdout.write(mol.write(format=config.extraction["output-format"]))
+        return 0
 
     # Check the ouptut directory exists, and create if it does not
     outpath.parent.mkdir(parents=True, exist_ok=True)
@@ -82,13 +89,16 @@ def parse(args: Namespace) -> None:
         buffer.write(compressor.flush())
 
 
-def aggregate(args: Namespace) -> None:
-    """Reads an SDF archive, computes feature vectors based on histograms
-    and writes out features and labels to numpy arrays."""
+def vectorize(args: Namespace) -> None:
+    """Computes a vector representation of a file of molecules, based on a previous
+    configuration setup by <aggregate>
+    """
     # Get our molecule set
     mols = parser.read_sdf_archive(args.input)
 
     # Extract the molecular properties
+    # Note here that the substructure search will return different results if the
+    # original and current `config.yml` files are not identical for that field
     mols = list(
         tqdm(
             map(vectorizer.calculate_mol_data, mols),
@@ -97,42 +107,27 @@ def aggregate(args: Namespace) -> None:
         )
     )
 
-    # Get target vector. This should be encoded in the SDF archive in
-    # the first step
-    target_name = config.aggregation["label-name"]
-    target_vector = np.array([i.attributes[target_name] for i in mols])
+    if args.metadata:
+        # Load the original configuration
+        with args.metadata.open("r") as f:
+            constructor = yaml.load(f, Loader=yaml.CLoader)
+        data = constructor["data"]
+        loaded_metadata = constructor["metadata"]
 
-    # Get the atom count vectors. The atoms used are defined in config
-    accounted_atom_types = config.aggregation["atom-types"]
-    atom_vectors = np.array(
-        [[i.atoms[atom] for i in mols] for atom in accounted_atom_types]
-    ).T
+        # Bin the molecules according to the data and metadata
+        feature_vector, target_vector = bin_mols(mols, data, loaded_metadata)
+    else:
+        # Compute and bin the molecules which have been extracted
+        feature_vector, target_vector, calculated_metadata = autobin_mols(
+            mols, args.plot_histograms
+        )
 
-    # Get the amine count vectors. The degrees are defined in config
-    accounted_amine_degrees = config.aggregation["amine-types"]
-    amine_vectors = np.array(
-        [[i.amines[amine] for i in mols] for amine in accounted_amine_degrees]
-    ).T
-
-    # Add in any other calculated frequencies
-    structure_vectors = np.array([i.structures for i in mols])
-
-    # Get the histogam vectors. The features are defined in config
-    accounted_features = config.aggregation["feature-types"]
-    hist_data = np.concatenate(
-        [
-            aggregator.compute_histogram_vectors(mols, feature, graphing_callback=plot_histogram if args.plot_histograms else None)
-            for feature in tqdm(
-                accounted_features,
-                leave=False,
-                desc="Histogramming",
-            )
-        ],
-        axis=1,
+    # Exit if we are not saving the output
+    print(
+        f"Vectorized {feature_vector.shape[0]} instances into {feature_vector.shape[1]} features."
     )
-
-    # Concatenate all the vectors
-    feature_vector = np.concatenate((atom_vectors, amine_vectors, structure_vectors, hist_data), axis=1)
+    if not args.output:
+        return 0
 
     # Check the output path exists
     args.output.mkdir(exist_ok=True)
@@ -141,10 +136,12 @@ def aggregate(args: Namespace) -> None:
     np.save(args.output / "features", feature_vector)
     np.save(args.output / "labels", target_vector)
 
-    print(
-        f"""Generated a feature matrix with {feature_vector.shape[0]} instances
-        and {feature_vector.shape[1]} features."""
-    )
+    # If we are not loading metadata it means we have created some
+    if not args.metadata:
+        with (args.output / "metadata.yaml").open("w") as metadata_file:
+            yaml.dump(calculated_metadata, metadata_file)
+
+    return 0
 
 
 def main(argv=sys.argv):
@@ -164,9 +161,7 @@ def main(argv=sys.argv):
         """,
     )
     parser.add_argument(
-        "-i",
-        "--input",
-        required=True,
+        "input",
         type=Path,
         help="""Pass the directory which contains the input files. Note this
         can be a folder of folders; any `*f.out` files processed by `g09` in
@@ -175,7 +170,7 @@ def main(argv=sys.argv):
     parser.add_argument(
         "-o",
         "--output",
-        required=True,
+        required=False,
         type=Path,
         help="""The output SDF archive. Instances have a sdf_energy
         key which contains the extracted energy. File is saved as a
@@ -191,27 +186,35 @@ def main(argv=sys.argv):
         from a given archive file.""",
     )
     vectorizer.add_argument(
-        "-i",
-        "--input",
-        required=True,
+        "input",
         type=Path,
         help="""The bz2 archive of SDF structures annotated by the
         parser utility.""",
     )
     vectorizer.add_argument(
+        "-m",
+        "--metadata",
+        required=False,
+        type=Path,
+        help="""The metadata which was generated by aggregator when creating
+        feature bins in a previous run. If this is not supplied, new bins
+        will be computed based on the input file.""",
+    )
+    vectorizer.add_argument(
         "-o",
         "--output",
-        required=True,
+        required=False,
         type=Path,
-        help="""The directory to output numpy arrays to.
-        If it does not exist, it will be created.""",
+        help="""The directory to output numpy arrays and metadata to.
+        If it does not exist, it will be created. If not specified, no output
+        will be given.""",
     )
     vectorizer.add_argument(
         "--plot-histograms",
         action="store_true",
-        help="""Save histograms for this run"""
+        help="""Save histograms for this run""",
     )
-    vectorizer.set_defaults(func=aggregate)
+    vectorizer.set_defaults(func=vectorize)
 
     args = base_parser.parse_args(argv[1:])
     args.func(args)

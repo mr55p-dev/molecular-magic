@@ -24,4 +24,5 @@ dependencies:
     - wandb==0.12.11
     - optuna==2.10.1
     - optuna-dashboard==0.7.1
+    - oyaml
     - tensorboard
