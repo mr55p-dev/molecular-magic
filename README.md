@@ -80,6 +80,7 @@ Much of the configuration for feature generation is controlled via `config.yml`.
 <!-- ### `molmagic` usage
 - Run `molmagic -h` for a list of subcommands.
 - The database cleaning can be invoked with `molmagic parser -i <input directory> -o <output archive>`. -->
+Note the order is guaranteed after generating the sdf file - `read_sdf_archive` is order-guaranteed.
 ### Error messages
 - The following Openbabel error messages can be ignored: 
   - `Failed to kekulize aromatic bonds in OBMol::PerceiveBondOrders`

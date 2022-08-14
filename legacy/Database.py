@@ -17,8 +17,8 @@ import pickle
 import numpy as np
 import tarfile
 import shutil
-import MultiMol
-import Monitor
+from legacy import MultiMol
+from legacy import Monitor
 import gc
 
 

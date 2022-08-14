@@ -23,11 +23,11 @@ sampleoutputnumber  Ouput features vector X upto this number
 
 from pathlib import Path
 
-data_basepath = Path("./static_data/")
-cleaned_database_path = data_basepath / "clean_database_output" / "data" / "cleaned_data.pkl"
+data_basepath = Path("./")
+cleaned_database_path = "GDB9.pkl"
 
 MaxAtoms = 8
-output_basepath = Path("static_data/create_features_output/")
+output_basepath = Path("GDB_output/")
 plot_location = output_basepath / "plots/"
 scaling_factor = 627.509608030593  # kcal/mol
 Group_to_Use = "A"
@@ -39,7 +39,7 @@ XHbondkdewidth = 0.3
 
 bondkdewidth = 0.07 # B0.07
 anglekdewidth = 0.07 # A0.07
-fileswanted = ["022090A1a.out", "000779A1a.out", "45253A1a.out", "020348A1a.out"]
+files_wanted = ["022090A1a.out", "000779A1a.out", "45253A1a.out", "020348A1a.out"]
 
 
 PTable = [
