@@ -41,7 +41,7 @@ def bin_mols(
         _assign_feature_bins(data[feature], _get_feature_data(molecules, feature))
         for feature in metadata["feature-types"]
     ]
-    hist_vectors = np.concatenate(binned_features)
+    hist_vectors = np.concatenate(binned_features, axis=1)
 
     # put it all together
     feature_vector = np.concatenate([static_representation, hist_vectors], axis=1)

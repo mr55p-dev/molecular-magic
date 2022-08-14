@@ -10,7 +10,7 @@ extraction:
     # - "c"  # aromatic carbon
 aggregation:
   resolution: 10000
-  bandwidth: 'scott'  # scott, sliverman, int or none
+  bandwidth: 0.01  # scott, sliverman, int or none
   # Can be scf_energy, free_energy, net_charge
   label-name: "free_energy"
   atom-types:
@@ -28,7 +28,7 @@ aggregation:
     - "dihedrals"
     - "hbonds"
 plotting:
-  save-dir: "./figures/scott"
+  save-dir: "./figures/fixed-0.01"
   show-dist: true
   show-kde: true
   plot-style: "whitegrid"
