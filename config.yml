@@ -29,7 +29,7 @@ aggregation:
     - "dihedrals"
     - "hbonds"
 plotting:
-  save-dir: "./figures/scott"
+  save-dir: "./figures/fixed-0.07-minmax"
   show-dist: true
   show-kde: true
   plot-style: "whitegrid"
