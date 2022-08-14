@@ -5,10 +5,25 @@ SDF file.
 Requires cclib and bz2 to be installed
 """
 from pathlib import Path
-from typing import Generator
+from typing import Iterable
 import openbabel.pybel as pb
 import cclib
 import bz2
+from molmagic.rules import filter_mols
+
+
+def parse_files(paths: list[Path]) -> Iterable[str]:
+    """Iterate over a sequence of dft file paths
+    and return each one parsed in the order given"""
+
+    # Read those files and extract geometries and scf energies
+    indices = range(len(paths))
+    mol = map(read_dft_frequency, paths, indices)
+
+    # Filter this list to remove any bad objects
+    mol_subset = filter(filter_mols, mol)
+
+    return mol_subset
 
 
 def check_convergence(path: Path) -> bool:
@@ -22,7 +37,7 @@ def check_convergence(path: Path) -> bool:
     return stat
 
 
-def read_dft_frequency(path: Path) -> pb.Molecule:
+def read_dft_frequency(path: Path, idx: int) -> pb.Molecule:
     """Read a gaussian output file into an OBMol object with scf energy annotated
 
     Should only be used on converged files - this is NOT CHECKED here
@@ -39,9 +54,6 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
 
     # Check molecule is read properly
     # Check cclib has succeeded
-    if ccdata is None:
-        raise ValueError(f"cclib could not parse data for {path}")
-
     if not hasattr(ccdata, "scfenergies"):
         raise ValueError("cclib could not extract energies")
 
@@ -62,6 +74,7 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
     # Set the converged energy as an attribute on the OBMol object
     mol.data.update(
         {
+            "id": idx,
             "scf_energy": scf_energy,
             "net_charge": ccdata.charge,
             "free_energy": free_energy,
@@ -71,7 +84,7 @@ def read_dft_frequency(path: Path) -> pb.Molecule:
     return mol
 
 
-def read_sdf_archive(archive_path: Path) -> Generator[pb.Molecule, None, None]:
+def read_sdf_archive(archive_path: Path) -> Iterable[pb.Molecule]:
     """Open a bz2 archive containing SDF-formatted molecules and return an
     iterator over pybel molecules"""
 
