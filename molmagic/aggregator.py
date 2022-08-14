@@ -172,7 +172,7 @@ def _make_static_parts(
     # Get target vector. This should be encoded in the SDF archive in
     # the first step
     target_name = config["label-name"]
-    target_vector = np.array([float(i.attributes[target_name]) for i in mols]).astype(np.float32)
+    target_vector = np.array([float(i.data[target_name]) for i in mols]).astype(np.float32)
 
     # Get the atom count vectors. The atoms used are defined in config
     accounted_atom_types = config["atom-types"]
@@ -223,8 +223,8 @@ def _get_feature_bins(
         flat_values = np.concatenate(values).ravel()
         type_bins[feature_type] = _get_type_bins(
             flat_values,
+            get_plot_name(feature, feature_type),
             graphing_callback=graphing_callback,
-            name=get_plot_name(feature, feature_type) if graphing_callback else None,
         )
 
     return type_bins
@@ -258,7 +258,7 @@ def _assign_feature_bins(
 
 
 def _get_type_bins(
-    data: np.ndarray, graphing_callback: Callable = None, name: tuple[str] = None
+    data: np.ndarray, name: tuple[str], graphing_callback: Callable = None
 ) -> list[float]:
     """Assign each point in data to a bin where the bin edges are
     assigned based on the kde minima of a histogram generated from data.
@@ -285,8 +285,14 @@ def _get_type_bins(
 
     # Find the lower and upper bounds of the data to be analysed
     # note that data should be a 1-dimensional array
-    lower_bound = data.min()
-    upper_bound = data.max()
+    if cfg["use-minmax"]:
+        lower_bound = data.min()
+        upper_bound = data.max()
+    else:
+        assert name
+        bond_feature = name[0] in ["bonds", "hbonds"]
+        lower_bound = 0.8 if bond_feature else 0
+        upper_bound = 3.0 if bond_feature else 200
 
     # Create a uniformly spaced set of samples between the minimum and maximum datapoint
     # 10000 samples is the number used in MolE8

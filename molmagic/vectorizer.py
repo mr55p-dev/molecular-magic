@@ -40,7 +40,7 @@ class HBondInteraction:
 @dataclass(eq=False)
 class MoleculeData:
     # Intrinsic properties
-    attributes: dict
+    data: dict
 
     # Properties which are just simple counts
     atoms: Counter
