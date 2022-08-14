@@ -2,11 +2,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from molmagic.config import aggregation
+from molmagic.config import plotting as cfg
 
 
-cfg = aggregation["plotting"]
-sns.set_style("whitegrid")
+sns.set_style(cfg["plot-style"])
 
 
 def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
@@ -38,7 +37,7 @@ def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
     return feature_name, "-".join(sequence)
 
 
-def plot_histogram(
+def draw_and_save_hist(
     data: np.ndarray, density: tuple[np.ndarray], bins: np.ndarray, name: tuple[str]
 ) -> None:
     """
