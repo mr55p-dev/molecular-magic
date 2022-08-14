@@ -89,14 +89,14 @@ def vectorize(args: Namespace) -> None:
     configuration setup by <aggregate>
     """
     # Get our molecule set
-    mols = parser.read_sdf_archive(args.input)
+    molecules = parser.read_sdf_archive(args.input)
 
     # Extract the molecular properties
     # Note here that the substructure search will return different results if the
     # original and current `config.yml` files are not identical for that field
-    mols = list(
+    molecules = list(
         tqdm(
-            map(vectorizer.calculate_mol_data, mols),
+            map(vectorizer.calculate_mol_data, molecules),
             leave=False,
             desc="Extracting molecular properties",
         )
@@ -110,11 +110,11 @@ def vectorize(args: Namespace) -> None:
         loaded_metadata = constructor["metadata"]
 
         # Bin the molecules according to the data and metadata
-        feature_vector, target_vector = bin_mols(mols, data, loaded_metadata)
+        feature_vector, target_vector = bin_mols(molecules, data, loaded_metadata)
     else:
         # Compute and bin the molecules which have been extracted
         feature_vector, target_vector, calculated_metadata = autobin_mols(
-            mols, args.plot_histograms
+            molecules, args.plot_histograms
         )
 
     # Exit if we are not saving the output
@@ -124,12 +124,16 @@ def vectorize(args: Namespace) -> None:
     if not args.output:
         return 0
 
+    # Get the molecule id's
+    id_vector = np.array([mol.data['id'] for mol in molecules]).astype(np.int32)
+
     # Check the output path exists
     args.output.mkdir(exist_ok=True)
 
     # Save the files
     np.save(args.output / "features", feature_vector)
     np.save(args.output / "labels", target_vector)
+    np.save(args.output / "identities", id_vector)
 
     # If we are not loading metadata it means we have created some
     if not args.metadata:

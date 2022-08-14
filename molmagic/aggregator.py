@@ -172,7 +172,7 @@ def _make_static_parts(
     # Get target vector. This should be encoded in the SDF archive in
     # the first step
     target_name = config["label-name"]
-    target_vector = np.array([float(i.attributes[target_name]) for i in mols]).astype(np.float32)
+    target_vector = np.array([float(i.data[target_name]) for i in mols]).astype(np.float32)
 
     # Get the atom count vectors. The atoms used are defined in config
     accounted_atom_types = config["atom-types"]

@@ -31,8 +31,8 @@ def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
     elif feature_name in ["bonds", "dihedrals"]:
         # For bonds and dihedrals the same code works
         sequence = map(lambda x: element_map[x], atom_sequence)
-    # else:
-    #     raise NotImplementedError(f"{feature_name} not implemented for plotting.")
+    else:
+        raise NotImplementedError(f"{feature_name} not implemented for plotting.")
 
     return feature_name, "-".join(sequence)
 
