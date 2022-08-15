@@ -61,8 +61,9 @@ def parse(args: Namespace) -> None:
             sys.stdout.write(mol.write(format=config.extraction["output-format"]))
         return 0
 
-    parser.write_compressed_sdf(mol_subset, outpath, len(matched_paths))
-    print(f"Filtered {FilteredMols.get_total()} instances")
+    n_mols = parser.write_compressed_sdf(mol_subset, outpath, len(matched_paths))
+    print(f"Filtered {FilteredMols.get_total()} instances. Written {n_mols} instances")
+    print([(i, getattr(FilteredMols, i)) for i in vars(FilteredMols) if not (callable(i) or i.startswith('_'))])
 
 
 def vectorize(args: Namespace) -> None:

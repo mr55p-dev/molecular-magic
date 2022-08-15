@@ -149,7 +149,7 @@ def read_qm9_dir(
 
 def write_compressed_sdf(
     mol_subset: list[pb.Molecule], outpath: PathLike, matched_paths: int = None
-) -> None:
+) -> int:
     # Check the ouptut directory exists, and create if it does not
     outpath = Path(outpath)
     outpath.parent.mkdir(parents=True, exist_ok=True)
@@ -160,6 +160,7 @@ def write_compressed_sdf(
     compressor = bz2.BZ2Compressor()
 
     # Write appropriate objects into outpath under the same filename
+    n_mols = 0
     with outpath.open("wb") as buffer:
         # Iterate the molecules
         for mol in tqdm(
@@ -173,6 +174,9 @@ def write_compressed_sdf(
             compressed_output = compressor.compress(bytes_output)
             # Stream them into the output file
             buffer.write(compressed_output)
+            # Increment the counter
+            n_mols += 1
 
         # Make sure nothing gets left behind in the compressor
         buffer.write(compressor.flush())
+    return n_mols

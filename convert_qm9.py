@@ -1,4 +1,5 @@
 from molmagic.parser import read_qm9_dir, write_compressed_sdf
+from molmagic.rules import FilteredMols, filter_mols
 
 exclude_files = [
     21725,
@@ -22,4 +23,6 @@ exclude_files = [
     59818,
 ]
 mols = read_qm9_dir("data/qm9/dsgdb9nsd.xyz.tar", exclude=exclude_files)
-write_compressed_sdf(mols, "./data/qm9/qm9_conformer")
+n_mols = write_compressed_sdf(filter(filter_mols, mols), "./data/qm9/qm9_conformer")
+print(f"Filtered {FilteredMols.get_total()} instances. Written {n_mols} instances")
+print([(i, getattr(FilteredMols, i)) for i in vars(FilteredMols) if not (callable(i) or i.startswith('_'))])
