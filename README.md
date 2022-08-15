@@ -61,6 +61,7 @@ Much of the configuration for feature generation is controlled via `config.yml`.
     - else, the **uncompressed** `sdf` formatted data will be written to `stdout`.
   - Running the command `magic parser ./moldata -o ./cleaned_data` will read all `g09` frequency files from `moldata` and writing atom positions and computed properties to a **compressed** `sdf` file `./cleaned_data.sdf.bz2`.
   - Running the command `magic parser ./moldata > output.sdf` will write an **uncompressed** sdf file `output.sdf` as we are making use of the shell redirection tricks.
+- To generate the QM9 dataset, run the command `python3 convert_qm9.py`
 ### 2. Generate npy feature vectors
 - Run `magic vectorizer <path_to_annotated_sdf_file> -o <output_dir>`
 - The utility `magic vectorizer` can be used to convert a `.sdf.bz2` archive into saved numpy vectors (`.npx` files).
