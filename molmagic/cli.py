@@ -23,6 +23,7 @@ from tqdm import tqdm
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
+from molmagic.rules import FilteredMols
 from molmagic import config
 import numpy as np
 from pathlib import Path
@@ -61,6 +62,7 @@ def parse(args: Namespace) -> None:
         return 0
 
     parser.write_compressed_sdf(mol_subset, outpath, len(matched_paths))
+    print(f"Filtered {FilteredMols.get_total()} instances")
 
 
 def vectorize(args: Namespace) -> None:

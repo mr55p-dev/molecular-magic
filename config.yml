@@ -1,5 +1,7 @@
 extraction:
   output-format: "sdf"
+  bond-min-distance: 0
+  bond-max-distance: 1.6
   hbond-min-distance: 1.6
   hbond-max-distance: 2.5
   exclude-imines: false
