@@ -23,11 +23,11 @@ sampleoutputnumber  Ouput features vector X upto this number
 
 from pathlib import Path
 
-data_basepath = Path("./")
-cleaned_database_path = "GDB9.pkl"
+data_basepath = Path("./data/MolE8_original_cleaned/data/")
+cleaned_database_path = data_basepath / "cleaned_data.pkl"
 
 MaxAtoms = 8
-output_basepath = Path("GDB_output/")
+output_basepath = Path("./data/MolE8_output/")
 plot_location = output_basepath / "plots/"
 scaling_factor = 627.509608030593  # kcal/mol
 Group_to_Use = "A"
