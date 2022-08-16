@@ -24,10 +24,7 @@ def parse_files(paths: list[Path]) -> Iterable[str]:
     indices = range(len(paths))
     mol = map(read_dft_frequency, paths, indices)
 
-    # Filter this list to remove any bad objects
-    mol_subset = filter(filter_mols, mol)
-
-    return mol_subset
+    return mol
 
 
 def check_convergence(path: Path) -> bool:

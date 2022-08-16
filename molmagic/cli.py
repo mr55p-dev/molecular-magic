@@ -80,6 +80,7 @@ def vectorize(args: Namespace) -> None:
     # Get our molecule set
     molecules = parser.read_sdf_archive(args.input)
 
+    # Filter
     if cfg_ext["use-filters"]:
         molecules = list(
             tqdm(
@@ -95,6 +96,7 @@ def vectorize(args: Namespace) -> None:
             map(vectorizer.calculate_mol_data, molecules),
             leave=False,
             desc="Extracting molecular properties",
+            total=len(molecules) if isinstance(molecules, list) else None
         )
     )
 
