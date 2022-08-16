@@ -36,6 +36,7 @@ def test_decode():
 
 
 def test_qm9():
-    mols = read_qm9_dir("data/qm9/dsgdb9nsd.xyz/")
+    mols = read_qm9_dir("data/qm9/qm9.xyz.tar")
     a = next(mols)
-    print("hello")
+    assert isinstance(a, pb.Molecule)
+    assert "scf_energy" in a.data and "free_energy" in a.data
