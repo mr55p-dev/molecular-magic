@@ -88,6 +88,9 @@ def vectorize(args: Namespace) -> None:
             )
         )
 
+        print(f"Filtered {FilteredMols.get_total()} instances:")
+        print(FilteredMols.get_breakdown())
+
     # Extract the molecular properties
     # Note here that the substructure search will return different results if the
     # original and current `config.yml` files are not identical for that field
@@ -96,7 +99,7 @@ def vectorize(args: Namespace) -> None:
             map(vectorizer.calculate_mol_data, molecules),
             leave=False,
             desc="Extracting molecular properties",
-            total=len(molecules) if isinstance(molecules, list) else None
+            total=len(molecules) if isinstance(molecules, list) else None,
         )
     )
 

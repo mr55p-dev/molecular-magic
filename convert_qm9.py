@@ -22,7 +22,7 @@ exclude_files = [
     6620,
     59818,
 ]
-mols = read_qm9_dir("data/qm9/dsgdb9nsd.xyz.tar", exclude=exclude_files)
-n_mols = write_compressed_sdf(filter(filter_mols, mols), "./data/qm9/qm9_conformer")
+mols = read_qm9_dir("data/qm9/qm9.xyz.tar", exclude=exclude_files)
+n_mols = write_compressed_sdf(filter(filter_mols, mols), "./data/qm9/qm9")
 print(f"Filtered {FilteredMols.get_total()} instances. Written {n_mols} instances")
 print([(i, getattr(FilteredMols, i)) for i in vars(FilteredMols) if not (callable(i) or i.startswith('_'))])

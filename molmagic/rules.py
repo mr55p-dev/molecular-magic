@@ -18,6 +18,7 @@ class FilteredMols:
     strained_angle = 0
     tetravalent_nitrogen = 0
     carbanion = 0
+    lone_hydrogen = 0
 
     @staticmethod
     def get_total():
@@ -32,6 +33,15 @@ class FilteredMols:
                 FilteredMols.carbanion,
             ]
         )
+
+    @staticmethod
+    def get_breakdown():
+        filter_categories = [
+            (i, getattr(FilteredMols, i))
+            for i in vars(FilteredMols)
+            if not (callable(getattr(FilteredMols, i)) or i.startswith("_"))
+        ]
+        return "\t" + "\n\t".join([f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories])
 
 
 def filter_mols(molecule: pb.Molecule) -> bool:
@@ -129,6 +139,14 @@ def filter_mols(molecule: pb.Molecule) -> bool:
 
         if all(i in carbanion_checklist for i in atom_types):
             FilteredMols.carbanion += 1
+            return False
+
+    # Remove lone protons
+    for atom in ob.OBMolAtomIter(mol):
+        if atom.GetAtomicNum() != 1:
+            continue
+        if not [i for i in ob.OBAtomAtomIter(atom)]:
+            FilteredMols.lone_hydrogen += 1
             return False
 
     return True
