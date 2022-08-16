@@ -21,17 +21,15 @@ class FilteredMols:
 
     @staticmethod
     def get_total():
-        return sum(
-            [
-                FilteredMols.other_atom,
-                FilteredMols.heavy_atom,
-                FilteredMols.zero_free_energy,
-                FilteredMols.long_bond,
-                FilteredMols.strained_angle,
-                FilteredMols.tetravalent_nitrogen,
-                FilteredMols.carbanion,
-            ]
-        )
+        return sum([
+            FilteredMols.other_atom,
+            FilteredMols.heavy_atom,
+            FilteredMols.zero_free_energy,
+            FilteredMols.long_bond,
+            FilteredMols.strained_angle,
+            FilteredMols.tetravalent_nitrogen,
+            FilteredMols.carbanion,
+        ])
 
 
 def filter_mols(molecule: pb.Molecule) -> bool:
@@ -44,6 +42,8 @@ def filter_mols(molecule: pb.Molecule) -> bool:
     Can make a preprocessing step where the combined data is stored as keys
     in the sdf file and then a second script to read those sdfs and their
     properties"""
+    if not cfg["use-filters"]:
+        return True
     mol = molecule.OBMol
 
     # Remove atoms other than HCNO
