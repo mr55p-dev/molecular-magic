@@ -20,10 +20,11 @@ from os import PathLike
 
 import oyaml as yaml
 from tqdm import tqdm
+from molmagic.config import extraction as cfg_ext
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic.rules import FilteredMols
+from molmagic.rules import FilteredMols, filter_mols
 from molmagic import config
 import numpy as np
 from pathlib import Path
@@ -63,7 +64,13 @@ def parse(args: Namespace) -> None:
 
     n_mols = parser.write_compressed_sdf(mol_subset, outpath, len(matched_paths))
     print(f"Filtered {FilteredMols.get_total()} instances. Written {n_mols} instances")
-    print([(i, getattr(FilteredMols, i)) for i in vars(FilteredMols) if not (callable(i) or i.startswith('_'))])
+    print(
+        [
+            (i, getattr(FilteredMols, i))
+            for i in vars(FilteredMols)
+            if not (callable(i) or i.startswith("_"))
+        ]
+    )
 
 
 def vectorize(args: Namespace) -> None:
@@ -72,6 +79,13 @@ def vectorize(args: Namespace) -> None:
     """
     # Get our molecule set
     molecules = parser.read_sdf_archive(args.input)
+
+    if cfg_ext["use-filters"]:
+        molecules = list(
+            tqdm(
+                filter(filter_mols, molecules), leave=False, desc="Filtering molecules"
+            )
+        )
 
     # Extract the molecular properties
     # Note here that the substructure search will return different results if the
@@ -107,7 +121,7 @@ def vectorize(args: Namespace) -> None:
         return 0
 
     # Get the molecule id's
-    id_vector = np.array([mol.data['id'] for mol in molecules]).astype(np.int32)
+    id_vector = np.array([mol.data["id"] for mol in molecules]).astype(np.int32)
 
     # Check the output path exists
     args.output.mkdir(exist_ok=True)

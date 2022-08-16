@@ -1,7 +1,7 @@
 """Implementions of filtering rules used by the parser"""
 
 from openbabel import pybel as pb, openbabel as ob
-from molmagic.config import extraction as cfg
+from molmagic.config import extraction as cfg, aggregation as cfg_agg
 
 anglelimit4 = 29.0
 anglelimit3A = 20.0
@@ -21,15 +21,17 @@ class FilteredMols:
 
     @staticmethod
     def get_total():
-        return sum([
-            FilteredMols.other_atom,
-            FilteredMols.heavy_atom,
-            FilteredMols.zero_free_energy,
-            FilteredMols.long_bond,
-            FilteredMols.strained_angle,
-            FilteredMols.tetravalent_nitrogen,
-            FilteredMols.carbanion,
-        ])
+        return sum(
+            [
+                FilteredMols.other_atom,
+                FilteredMols.heavy_atom,
+                FilteredMols.zero_free_energy,
+                FilteredMols.long_bond,
+                FilteredMols.strained_angle,
+                FilteredMols.tetravalent_nitrogen,
+                FilteredMols.carbanion,
+            ]
+        )
 
 
 def filter_mols(molecule: pb.Molecule) -> bool:
@@ -47,12 +49,12 @@ def filter_mols(molecule: pb.Molecule) -> bool:
     mol = molecule.OBMol
 
     # Remove atoms other than HCNO
-    if any(i.atomicnum not in (1, 6, 7, 8) for i in molecule.atoms):
+    if any(i.atomicnum not in cfg_agg["atom-types"] for i in molecule.atoms):
         FilteredMols.other_atom += 1
         return False
 
     # Filter more than 8 heavy atoms
-    if len([i for i in molecule.atoms if i.atomicnum != 1]) > 8:
+    if len([i for i in molecule.atoms if i.atomicnum != 1]) > cfg["max-heavy-atoms"]:
         FilteredMols.heavy_atom += 1
         return False
 
