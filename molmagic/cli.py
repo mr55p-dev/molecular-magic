@@ -20,7 +20,7 @@ import tarfile
 
 import oyaml as yaml
 from tqdm import tqdm
-from molmagic.config import extraction as cfg_ext, qm9_exclude
+from molmagic.config import extraction as cfg_ext, qm9_exclude, plotting as cfg_plot
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
@@ -29,6 +29,7 @@ from molmagic import config
 import numpy as np
 from pathlib import Path
 import sys
+import wandb
 
 
 def parse(args: Namespace) -> None:
@@ -59,7 +60,7 @@ def parse(args: Namespace) -> None:
         if not is_tarfile(basepath):
             raise tarfile.ReadError("Tarfile is not readable")
         # Autodetect the internal format from the filename
-        fmt = basepath.name.split('.')[-2]
+        fmt = basepath.name.split(".")[-2]
         # Get the number of entries in the archive
         with tarfile.open(basepath) as archive:
             n_instances = sum(1 for member in archive if member.isreg())
@@ -138,28 +139,65 @@ def vectorize(args: Namespace) -> None:
             molecules, args.plot_histograms
         )
 
-    # Exit if we are not saving the output
     print(
         f"Vectorized {feature_vector.shape[0]} instances into {feature_vector.shape[1]} features."
     )
-    if not args.output:
-        return 0
 
     # Get the molecule id's
     id_vector = np.array([mol.data["id"] for mol in molecules]).astype(np.int32)
 
     # Check the output path exists
-    args.output.mkdir(exist_ok=True)
+    if not args.output:
+        args.output = Path("/tmp/")
+    else:
+        args.output.mkdir(exist_ok=True)
+
+    # Define the paths
+    features_output = args.output / "features.npy"
+    labels_output = args.output / "labels.npy"
+    identities_output = args.output / "identities.npy"
+    metadata_output = args.output / "metadata.yml"
 
     # Save the files
-    np.save(args.output / "features", feature_vector)
-    np.save(args.output / "labels", target_vector)
-    np.save(args.output / "identities", id_vector)
+    np.save(features_output, feature_vector)
+    np.save(labels_output, target_vector)
+    np.save(identities_output, id_vector)
 
     # If we are not loading metadata it means we have created some
     if not args.metadata:
-        with (args.output / "metadata.yaml").open("w") as metadata_file:
+        with (metadata_output).open("w") as metadata_file:
             yaml.dump(calculated_metadata, metadata_file)
+
+    # Create an artifact if we are asked to do so
+    if args.artifact:
+        wandb.init(
+            project="MolecularMagic",
+            entity="molecular-magicians",
+        )
+        artifact = wandb.Artifact(
+            name=args.artifact,
+            type="dataset",
+            description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
+        )
+        # Upload the files
+        artifact.add_file(features_output, name="features.npy")
+        artifact.add_file(labels_output, name="labels.npy")
+        artifact.add_file(identities_output, name="identities.npy")
+        artifact.add_file(metadata_output, name="metadata.yml")
+
+        # Check if we need to log figures
+        if args.plot_histograms:
+            artifact.add_dir(cfg_plot["save-dir"])
+
+        wandb.log_artifact(artifact)
+
+    # Unlink the created files if we are not saving output
+    if not args.output:
+        features_output.unlink()
+        labels_output.unlink()
+        identities_output.unlink()
+        if not args.metadata:
+            metadata_output.unlink()
 
     return 0
 
@@ -233,6 +271,14 @@ def main(argv=sys.argv):
         "--plot-histograms",
         action="store_true",
         help="""Save histograms for this run""",
+    )
+    vectorizer.add_argument(
+        "-a",
+        "--artifact",
+        required=False,
+        type=str,
+        help="""The name of this artifact in weights and biases (default not saved)""",
+        default=None,
     )
     vectorizer.set_defaults(func=vectorize)
 

@@ -57,6 +57,7 @@ Much of the configuration for feature generation is controlled via `config.yml`.
 - Run `magic vectorizer <path_to_annotated_sdf_file> -o <output_dir>`
 - The utility `magic vectorizer` can be used to convert a `.sdf.bz2` archive into saved numpy vectors (`.npx` files).
 - The syntax is the same as for the parser; specify the input file (in this case it should be `path/to/output/of/parser.sdf.bz2`) and the `-o` flag to optionally specify an output directory.
+- To log the generated dataset as an artifact in weights and biases supply the `--artifact <name>` flag with the name of the artifact.
 - To generate a representation based on the molecules in the archive, do not pass the `-m`/`--metadata` flag.
   - There will be three new files created in that directory specified, `features.npy`, `labels.npy` and `metadata.yaml`.
   - `metadata.yaml` is used later on to enable converting molecules into this vector scheme using the same histograms.
