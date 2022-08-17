@@ -170,7 +170,9 @@ def _make_static_parts(
     """Deals with creating fixed parts of representations that dont require binning"""
     # Get target vector. This should be encoded in the SDF archive in
     # the first step
-    moldata = [float(i.data["scf_energy"], float(i.data["free_energy"])) for i in mols]
+    moldata = [
+        (float(i.data["scf_energy"]), float(i.data["free_energy"])) for i in mols
+    ]
     target_vector = np.array(moldata).astype(np.float32)
 
     # Get the atom count vectors. The atoms used are defined in config

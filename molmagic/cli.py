@@ -290,6 +290,7 @@ def main(argv=sys.argv):
     vectorizer_input.add_argument(
         "-l", "--load", type=str, help="""Name of the artifact to load from WandB"""
     )
+    # TODO: #79 Delineate local and wandb metadata
     vectorizer.add_argument(
         "-m",
         "--metadata",
