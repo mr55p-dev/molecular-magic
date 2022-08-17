@@ -54,9 +54,13 @@ def parse(args: Namespace) -> None:
         print(f"{basepath} does not exist.")
 
     # Detect if this is a tar archive to extract
-    if basepath.is_file() and is_tarfile(basepath):
+    if basepath.is_file():
+        # Check the file is readable
+        if not is_tarfile(basepath):
+            raise tarfile.ReadError("Tarfile is not readable")
         # Autodetect the internal format from the filename
         fmt = basepath.name.split('.')[-2]
+        # Get the number of entries in the archive
         with tarfile.open(basepath) as archive:
             n_instances = sum(1 for member in archive if member.isreg())
         mols = parser.parse_tar_archive(basepath, fmt, exclude=qm9_exclude)
