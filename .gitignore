@@ -152,6 +152,9 @@ moldata/
 cleaned_data.sdf.bz2
 auto_bandwidth_features/
 manual_bandwidth_features/
+autoband_badh_freeeng/
+/**/figures*/
 
 # Figures
 figures/
+*.swp
