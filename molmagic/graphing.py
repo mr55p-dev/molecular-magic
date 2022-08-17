@@ -48,9 +48,7 @@ def draw_and_save_hist(
     fig = plt.figure()
 
     # Plot the data as a histogram
-    ax = sns.histplot(
-        data, stat='density'  # Normalize the area under the histogram
-    )
+    ax = sns.histplot(data, stat="density")  # Normalize the area under the histogram
 
     # Plot vertical lines for every bin boundary
     # Do not try to plot lines at positive or negative infinity

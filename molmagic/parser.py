@@ -10,7 +10,6 @@ from typing import Iterable
 import openbabel.pybel as pb
 import cclib
 import bz2
-from molmagic.rules import filter_mols
 from molmagic.config import extraction as cfg
 import tarfile
 from tqdm import tqdm
@@ -48,8 +47,8 @@ def parse_tar_archive(
             fields = props.split(b"\t")
 
             # Get the file index
-            id = int(fields[0].split(b" ")[1])  # ID specified by QM9
-            if exclude and (id in exclude):
+            identity = int(fields[0].split(b" ")[1])  # ID specified by QM9
+            if exclude and (identity in exclude):
                 continue
 
             # Construct openbabel
@@ -61,7 +60,7 @@ def parse_tar_archive(
 
             # Save this to the molecule
             mol.data.update(
-                {"id": id, "scf_energy": scf_energy, "free_energy": free_energy}
+                {"id": identity, "scf_energy": scf_energy, "free_energy": free_energy}
             )
 
             yield mol

@@ -15,8 +15,6 @@ fmt:
 Depends on `cclib` and `bz2`.
 """
 from argparse import ArgumentParser, Namespace
-import bz2
-from os import PathLike
 from tarfile import is_tarfile
 import tarfile
 
@@ -58,10 +56,10 @@ def parse(args: Namespace) -> None:
     # Detect if this is a tar archive to extract
     if basepath.is_file() and is_tarfile(basepath):
         # Autodetect the internal format from the filename
-        format = basepath.name.split('.')[-2]
+        fmt = basepath.name.split('.')[-2]
         with tarfile.open(basepath) as archive:
             n_instances = sum(1 for member in archive if member.isreg())
-        mols = parser.parse_tar_archive(basepath, format, exclude=qm9_exclude)
+        mols = parser.parse_tar_archive(basepath, fmt, exclude=qm9_exclude)
 
     # Detect if this is a directory
     elif basepath.is_dir():

@@ -41,7 +41,9 @@ class FilteredMols:
             for i in vars(FilteredMols)
             if not (callable(getattr(FilteredMols, i)) or i.startswith("_"))
         ]
-        return "\t" + "\n\t".join([f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories])
+        return "\t" + "\n\t".join(
+            [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
+        )
 
 
 def filter_mols(molecule: pb.Molecule) -> bool:
