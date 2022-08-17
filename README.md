@@ -9,13 +9,17 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 ## How to run the code
 Much of the configuration for feature generation is controlled via `config.yml`. The properties are:
 - ### Extraction
-  - `output-format`: The way in which molecules are encoded when the parser scans through the `g09` files. This should be left as `sdf`
+  - #### Filter configuration
+  - `use-filters`: Should molecules be filtered based on the MolE8 filtering rules (configured below). Note filtering is applied at the **vectorizing step** not the parsing step, so archives will still retain all instances and do not need to be recompiled every time a rule changes.
+  - `output-format`: The format to save instances as internally in the output bz2 archive. This should not be changed from `sdf` as nothing else is implemented.
+  `bond-min-distance`: The minimum distance between all atoms. If a molecule contains a bond shorter than this, it is filtered out under the rule `long bonds`.
+  - `bond-max-distance`: The maximum distance between all atoms. See above
+  - `max-heavy-atoms`: The maximum number of heavy atoms allowed in a molecule. Heavy atoms count as any atom with an atomic number greater than 1.
+  - #### Extraction configuration
+  - `hbond-atoms`: The atom types (given as atomic numbers) which can take part in hydrogen bonding. Default behaviour is Nitrogen (7) and Oxygen (8)
   - `hbond-min-distance`: The minimum distance (in angstrom) between a hydrogen donor and hbond acceptor for a bond to be considered a hydrogen bond
   - `hbond-max-distance`: The maximum distance (in angstrom) between a hydrogen donor and hbond acceptor for a bond to be considered a hydrogen bond
-  - `exclude-imines`: Currently not implemented
-  - `hbond-atoms`: The atom types (given as atomic numbers) which can take part in hydrogen bonding. Default behaviour is Nitrogen (7) and Oxygen (8)
   - `substructures`: A list of SMARTS strings. This list gets counted for each molecule and added to the total feature vector. See [here](https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html) for some common examples of functional groups which can be addressed in this way.
-  - `use-filters`: Should the molecules be filtered before vectorizing?
 - ### Aggregation
   - `resolution`: The number of samples to use when sampling the KDE for computing minima.
   - `bandwidth`: The bandwidth to use when generating histograms. Can either be a positive scalar, 'scott' for the Scott method, 'silverman' for the Silverman method of automatic bandwidth selection or empty for the default (Scott method).
@@ -23,6 +27,11 @@ Much of the configuration for feature generation is controlled via `config.yml`.
   - `atom-types`: Each atom (atomic number) listed here will be counted and included as part of the representation. By default this is `[1, 6, 7, 8]` meaning `[Hydrogen, Carbon, Nitrogen, Oxygen]`. The elemnents `[0:4]` of the feature will therefore correspond to the frequency of those atoms in the order given. Also controlls the behaviour of filtering if that is enabled.
   - `amine-types`: The degrees of amine which are counted as part of the representation. By default, primary (`1`), secondary (`2`) and tertiary (`3`) amines are counted.
   - `feature-types`: Which features to use when generating the histograms. Allowed values are `bonds`, `angles`, `dihedrals` and `hbonds`. More may be added in the future.
+- ### Plotting
+  - `save-dir`: The directory to write figures to. This path will be created if it does not exist.
+  - `show-dist`: Plot the histogram shape (`sns.histplot`).
+  - `show-kde`: Draw a lineplot of the sampled kernel density estiamte.
+  - `plot-style`: Styling parameter passed to `sns.set_style`.
 
 ### 0. Set up the environment
 - Clone this repo and install the anaconda environment with `conda env create -f environment.yml`. This downlads the correct version of python and all its dependencies.
@@ -32,8 +41,11 @@ Much of the configuration for feature generation is controlled via `config.yml`.
 - Download the dataset zip files from the [University of Nottingham repository](https://unow.nottingham.ac.uk/handle/internal/9356?show=full).
   - Create a folder called `moldata` in the repo folder and extract the files there.
 ### 1. Create cleaned annotated sdf files
-- Run `magic parser <path_to_moldata_directory> -o <path_to_output_file>`,
-  - The input directory should contain frequency files for all the structures to be analysed. The parser command will walk through all subdirectories of the one specified so there is no need to unpack every file into the same directory.
+- Run `magic parser <path_to_input> -o <path_to_output_file>`,
+  - Input can be:
+    - Directory of `g09` formatted Gaussian frequency calcualtion files (the parser will glob for `*f.out`) files.
+    - Tar archive of files. The format of the compressed files is extracted from the file name (which should be of the form `name.format.tar`). Currently, `xyz` files are supported (of the formt designated by QM9).
+  - If a directory is specified the parser will recursively search for files.
   - Right now we use `pathlib.Path.glob`, so there is no order-consistency guarantee.
   - `-o` is an optional argument,
     - if provided, a **bz2 compressed** `sdf` formatted file is written to the destination file specified.
