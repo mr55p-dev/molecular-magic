@@ -15,7 +15,6 @@ fmt:
 Depends on `cclib` and `bz2`.
 """
 from argparse import ArgumentParser, Namespace
-from logging import Filter
 import shutil
 from tarfile import is_tarfile
 import tarfile
