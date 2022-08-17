@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 import shutil
+import numpy as np
 
 
 run = wandb.init(
@@ -35,6 +36,13 @@ def log_model(model: tf.keras.Model) -> None:
     shutil.rmtree(
         output_path, onerror=lambda *_: print("Failed to clean up model upload")
     )
+
+
+def get_label_type(arr: np.ndarray, label_type: str) -> np.ndarray:
+    if label_type == 'electronic_energy':
+        return arr[0]
+    elif label_type == 'free_energy':
+        return arr[1]
 
 
 def get_split(type: str) -> Callable:
