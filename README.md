@@ -54,6 +54,7 @@ Much of the configuration for feature generation is controlled via `config.yml`.
     <!-- - else, the **uncompressed** `sdf` formatted data will be written to `stdout`. -->
     - The suggesed file extension for the output of this command is `.sdf.bz2` for clarity.
   - Running the command `magic parser ./moldata -o ./cleaned_data.sdf.bz2` will read all `g09` frequency files from `moldata` and writing atom positions and computed properties to a **compressed** `sdf` file `./cleaned_data.sdf.bz2`.
+  - Note that filtering occurs at this stage
   <!-- - Running the command `magic parser ./moldata > output.sdf` will write an **uncompressed** sdf file `output.sdf` as we are making use of the shell redirection tricks. -->
 ### 2. Generate npy feature vectors
 - Run `magic vectorizer (-i <path_to_annotated_sdf_file> OR -l <name_of_wandb_artifact>) -o <output_dir>`
@@ -65,7 +66,7 @@ Much of the configuration for feature generation is controlled via `config.yml`.
 - To generate a representation based on the results of a previous run, pass the `-m`/`--metadata` flag with the path to the `metadata.yml` file which was created for the run you wish to use.
 - The flag `--plot-histograms` can be used when generating a new representation, and will output png files to the directory specified in `config.yml:plotting:save-dir`. These are to help visualise exactly what the algorithm is doing
 - The `-a/--artifact <name>` flag will write the output as an artifact with name `<name>` to weights and biases.
-- The labels in `labels.npy` will be extracted based on the **label-name** speficied in `config.yml`.
+- The labels in `labels.npy` will be extracted such that `labels[:, 0]` corresponds to the electronic energy and `labels[:, 1]` corresponds to the free energy.
 ### 3. Machine Learning Code...
 
 ----

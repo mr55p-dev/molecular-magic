@@ -65,14 +65,14 @@ def parse(args: Namespace) -> None:
         # Get the number of entries in the archive
         with tarfile.open(input_path) as archive:
             n_instances = sum(1 for member in archive if member.isreg())
-        mols = parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude)
+        molecules = parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude)
 
     # Detect if this is a directory
     elif input_path.is_dir():
         # Walk the basepath directory and discover all the
         # g09 formatted output files
         matched_paths = list(input_path.glob("./**/*f.out"))
-        mols = parser.parse_files(matched_paths)
+        molecules = parser.parse_files(matched_paths)
         n_instances = len(matched_paths)
 
     else:
@@ -81,9 +81,33 @@ def parse(args: Namespace) -> None:
     # Check the ouptut directory exists, and create if it does not
     output_path = Path(output_path or "/tmp/archive.sdf.bz2")
 
+    # Filter
+    molecules = list(
+        tqdm(
+            filter(global_filters, molecules),
+            leave=False,
+            desc="Applying global filters",
+        )
+    )
+    if cfg_ext["use-filters"]:
+        molecules = list(
+            tqdm(
+                filter(local_filters, molecules),
+                leave=False,
+                desc="Filtering molecules",
+            )
+        )
+
+        print(f"Filtered {FilteredMols.get_total()} instances:")
+        print(FilteredMols.get_breakdown())
+    else:
+        print(
+            f"Filtered {FilteredMols.disjoint_structure} instances due to non-viable structure."
+        )
+
     # Write the archive out
-    n_mols = parser.write_compressed_sdf(mols, output_path, n_instances)
-    print(f"Written {n_mols} instances out to {output_path}")
+    n_molecules = parser.write_compressed_sdf(molecules, output_path, n_instances)
+    print(f"Written {n_molecules} instances out to {output_path}")
 
     # Write this archive to a wandb archive (if asked to)
     if args.artifact:
@@ -118,30 +142,6 @@ def vectorize(args: Namespace) -> None:
 
     # Get our molecule set
     molecules = parser.read_sdf_archive(input_path)
-
-    # Filter
-    molecules = list(
-        tqdm(
-            filter(global_filters, molecules),
-            leave=False,
-            desc="Applying global filters",
-        )
-    )
-    if cfg_ext["use-filters"]:
-        molecules = list(
-            tqdm(
-                filter(local_filters, molecules),
-                leave=False,
-                desc="Filtering molecules",
-            )
-        )
-
-        print(f"Filtered {FilteredMols.get_total()} instances:")
-        print(FilteredMols.get_breakdown())
-    else:
-        print(
-            f"Filtered {FilteredMols.disjoint_structure} instances due to non-viable structure."
-        )
 
     # Extract the molecular properties
     # Note here that the substructure search will return different results if the
