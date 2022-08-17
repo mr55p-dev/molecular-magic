@@ -1,6 +1,6 @@
 extraction:
   # Filter configuration
-  use-filters: true
+  use-filters: false
   output-format: "sdf"
   bond-min-distance: 0
   bond-max-distance: 1.6

@@ -15,6 +15,8 @@ fmt:
 Depends on `cclib` and `bz2`.
 """
 from argparse import ArgumentParser, Namespace
+from logging import Filter
+import shutil
 from tarfile import is_tarfile
 import tarfile
 
@@ -24,8 +26,7 @@ from molmagic.config import extraction as cfg_ext, qm9_exclude, plotting as cfg_
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic.rules import FilteredMols, filter_mols
-from molmagic import config
+from molmagic.rules import FilteredMols, global_filters, local_filters
 import numpy as np
 from pathlib import Path
 import sys
@@ -47,76 +48,100 @@ def parse(args: Namespace) -> None:
         Directory to write all the output files to
     """
 
-    basepath: Path = args.input
-    outpath: Path = args.output
+    input_path: Path = args.input
+    output_path: Path = args.output
 
     # Check the path exists
-    if not basepath.exists():
-        print(f"{basepath} does not exist.")
+    if not input_path.exists():
+        print(f"{input_path} does not exist.")
 
     # Detect if this is a tar archive to extract
-    if basepath.is_file():
+    if input_path.is_file():
         # Check the file is readable
-        if not is_tarfile(basepath):
+        if not is_tarfile(input_path):
             raise tarfile.ReadError("Tarfile is not readable")
         # Autodetect the internal format from the filename
-        fmt = basepath.name.split(".")[-2]
+        fmt = input_path.name.split(".")[-2]
         # Get the number of entries in the archive
-        with tarfile.open(basepath) as archive:
+        with tarfile.open(input_path) as archive:
             n_instances = sum(1 for member in archive if member.isreg())
-        mols = parser.parse_tar_archive(basepath, fmt, exclude=qm9_exclude)
+        mols = parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude)
 
     # Detect if this is a directory
-    elif basepath.is_dir():
+    elif input_path.is_dir():
         # Walk the basepath directory and discover all the
         # g09 formatted output files
-        matched_paths = list(basepath.glob("./**/*f.out"))
+        matched_paths = list(input_path.glob("./**/*f.out"))
         mols = parser.parse_files(matched_paths)
         n_instances = len(matched_paths)
 
     else:
         raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
-    # If we are not given a file, write this to stdout **uncompressed**
-    if not outpath:
-        for mol in mols:
-            sys.stdout.write(mol.write(format=config.extraction["output-format"]))
-        return 0
-
     # Check the ouptut directory exists, and create if it does not
-    outpath = Path(outpath)
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    if not outpath.name.endswith(".sdf.bz2"):
-        outpath = outpath.with_suffix(".sdf.bz2")
+    output_path = Path(output_path or "/tmp/archive.sdf.bz2")
 
     # Write the archive out
-    n_mols = parser.write_compressed_sdf(mols, outpath, n_instances)
-    print(f"Written {n_mols} instances out to {outpath}")
+    n_mols = parser.write_compressed_sdf(mols, output_path, n_instances)
+    print(f"Written {n_mols} instances out to {output_path}")
 
     # Write this archive to a wandb archive (if asked to)
-    ...
+    if args.artifact:
+        wandb.init(
+            project="MolecularMagic",
+            entity="molecular-magicians",
+        )
+        artifact = wandb.Artifact(args.artifact, type="dataset")
+        artifact.add_file(output_path, name="archive.sdf.bz2")
+        wandb.log_artifact(artifact)
+        output_path.unlink()
 
 
 def vectorize(args: Namespace) -> None:
     """Computes a vector representation of a file of molecules, based on a previous
     configuration setup by <aggregate>
     """
-    # If no archive is specified load an artefact
-    ...
+    # If no archive is specified load an artifact
+    if args.load:
+        run = wandb.init(
+            project="MolecularMagic",
+            entity="molecular-magicians",
+        )
+        artifact = run.use_artifact(args.load, type="dataset")
+        download_path = Path("/tmp") / artifact.name
+        if download_path.exists():
+            shutil.rmtree(download_path)
+        artifact.download(download_path)
+        input_path = download_path / "archive.sdf.bz2"
+    else:
+        input_path = args.input
 
     # Get our molecule set
-    molecules = parser.read_sdf_archive(args.input)
+    molecules = parser.read_sdf_archive(input_path)
 
     # Filter
+    molecules = list(
+        tqdm(
+            filter(global_filters, molecules),
+            leave=False,
+            desc="Applying global filters",
+        )
+    )
     if cfg_ext["use-filters"]:
         molecules = list(
             tqdm(
-                filter(filter_mols, molecules), leave=False, desc="Filtering molecules"
+                filter(local_filters, molecules),
+                leave=False,
+                desc="Filtering molecules",
             )
         )
 
         print(f"Filtered {FilteredMols.get_total()} instances:")
         print(FilteredMols.get_breakdown())
+    else:
+        print(
+            f"Filtered {FilteredMols.disjoint_structure} instances due to non-viable structure."
+        )
 
     # Extract the molecular properties
     # Note here that the substructure search will return different results if the
@@ -182,7 +207,7 @@ def vectorize(args: Namespace) -> None:
         )
         artifact = wandb.Artifact(
             name=args.artifact,
-            type="dataset",
+            type="vectors",
             description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
         )
         # Upload the files
@@ -241,6 +266,12 @@ def main(argv=sys.argv):
         bz2-compressed archive, which can be recovered using methods
         implemented in magic.parser""",
     )
+    parser.add_argument(
+        "-a",
+        "--artifact",
+        type=str,
+        help="The name of this artifact in weights and biases (default not saved)",
+    )
     parser.set_defaults(func=parse)
 
     # Create a vectorizer option
@@ -249,11 +280,16 @@ def main(argv=sys.argv):
         description="""Compute the feature vector
         from a given archive file.""",
     )
-    vectorizer.add_argument(
-        "input",
+    vectorizer_input = vectorizer.add_mutually_exclusive_group(required=True)
+    vectorizer_input.add_argument(
+        "-i",
+        "--input",
         type=Path,
         help="""The bz2 archive of SDF structures annotated by the
         parser utility.""",
+    )
+    vectorizer_input.add_argument(
+        "-l", "--load", type=str, help="""Name of the artifact to load from WandB"""
     )
     vectorizer.add_argument(
         "-m",
