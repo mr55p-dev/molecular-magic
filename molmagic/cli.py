@@ -93,11 +93,17 @@ def parse(args: Namespace) -> None:
     n_mols = parser.write_compressed_sdf(mols, outpath, n_instances)
     print(f"Written {n_mols} instances out to {outpath}")
 
+    # Write this archive to a wandb archive (if asked to)
+    ...
+
 
 def vectorize(args: Namespace) -> None:
     """Computes a vector representation of a file of molecules, based on a previous
     configuration setup by <aggregate>
     """
+    # If no archive is specified load an artefact
+    ...
+
     # Get our molecule set
     molecules = parser.read_sdf_archive(args.input)
 
