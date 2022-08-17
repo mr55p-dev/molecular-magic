@@ -27,6 +27,46 @@ def parse_files(paths: list[Path]) -> Iterable[str]:
     return mol
 
 
+def parse_tar_archive(
+    tarball: PathLike, format: str, exclude: list[int] = None
+) -> Iterable[pb.Molecule]:
+    """Open a tar archive molecules and return an iterator over pybel
+    molecules"""
+    if format != "xyz":
+        raise NotImplementedError(
+            f"{format} not yet implemented for parsing a tar archive."
+        )
+    # Get files in tarball
+    with tarfile.open(tarball) as tar:
+        for member in tar.getmembers():
+            # Extract the file
+            file = tar.extractfile(member)
+            contents = file.read()
+
+            # Extract props
+            props = contents.splitlines()[1]
+            fields = props.split(b"\t")
+
+            # Get the file index
+            id = int(fields[0].split(b" ")[1])  # ID specified by QM9
+            if exclude and (id in exclude):
+                continue
+
+            # Construct openbabel
+            mol = pb.readstring(format="xyz", string=contents.decode("utf-8"))
+
+            # Calculate the label properties
+            scf_energy = float(fields[12]) * 627.503  # U @ 298K (kcal/mol)
+            free_energy = float(fields[14]) * 627.503  # G @ 298K (kcal/mol)
+
+            # Save this to the molecule
+            mol.data.update(
+                {"id": id, "scf_energy": scf_energy, "free_energy": free_energy}
+            )
+
+            yield mol
+
+
 def check_convergence(path: Path) -> bool:
     """Open a file and check that its converged.
 
@@ -108,51 +148,9 @@ def read_sdf_archive(archive_path: Path) -> Iterable[pb.Molecule]:
                 yield pb.readstring(format="sdf", string=sdf_string)
 
 
-def read_qm9_dir(
-    tarball: PathLike, exclude: list[int] = None, energies: Path = None
-) -> Iterable[pb.Molecule]:
-    """Open a tar archive containing XYZ-formatted molecules and return an
-    iterator over pybel molecules"""
-    # Get files in tarball
-    with tarfile.open(tarball) as tar:
-        for member in tar.getmembers():
-            # Extract the file
-            file = tar.extractfile(member)
-            contents = file.read()
-
-            # Extract props
-            props = contents.splitlines()[1]
-            fields = props.split(b"\t")
-
-            # Get the file index
-            id = int(fields[0].split(b" ")[1])  # ID specified by QM9
-            if exclude and (id in exclude):
-                continue
-
-            # Construct openbabel
-            mol = pb.readstring(format="xyz", string=contents.decode('utf-8'))
-
-            # Calculate the label properties
-            scf_energy = float(fields[12]) * 627.503  # U @ 298K (kcal/mol)
-            free_energy = float(fields[14]) * 627.503  # G @ 298K (kcal/mol)
-
-            # Save this to the molecule
-            mol.data.update(
-                {"id": id, "scf_energy": scf_energy, "free_energy": free_energy}
-            )
-
-            yield mol
-
-
 def write_compressed_sdf(
     mol_subset: list[pb.Molecule], outpath: PathLike, matched_paths: int = None
 ) -> int:
-    # Check the ouptut directory exists, and create if it does not
-    outpath = Path(outpath)
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    if not outpath.name.endswith(".sdf.bz2"):
-        outpath = outpath.with_suffix(".sdf.bz2")
-
     # Create a compression object
     compressor = bz2.BZ2Compressor()
 
@@ -160,9 +158,7 @@ def write_compressed_sdf(
     n_mols = 0
     with outpath.open("wb") as buffer:
         # Iterate the molecules
-        for mol in tqdm(
-            mol_subset, total=matched_paths if matched_paths else None
-        ):
+        for mol in tqdm(mol_subset, total=matched_paths if matched_paths else None):
             # Pybel returns a string if no output file is provided
             raw_output: str = mol.write(format=cfg["output-format"])
             # Encode the string to utf8 bytes

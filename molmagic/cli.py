@@ -17,10 +17,12 @@ Depends on `cclib` and `bz2`.
 from argparse import ArgumentParser, Namespace
 import bz2
 from os import PathLike
+from tarfile import is_tarfile
+import tarfile
 
 import oyaml as yaml
 from tqdm import tqdm
-from molmagic.config import extraction as cfg_ext
+from molmagic.config import extraction as cfg_ext, qm9_exclude
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
@@ -46,31 +48,47 @@ def parse(args: Namespace) -> None:
         Directory to write all the output files to
     """
 
-    basepath = args.input
-    outpath = args.output
+    basepath: Path = args.input
+    outpath: Path = args.output
 
-    # Walk the basepath directory and discover all the
-    # g09 formatted output files
-    # TODO: #70 use shell globbing and take a list of paths as args.input
-    matched_paths = list(basepath.glob("./**/*f.out"))
+    # Check the path exists
+    if not basepath.exists():
+        print(f"{basepath} does not exist.")
 
-    mol_subset = parser.parse_files(matched_paths)
+    # Detect if this is a tar archive to extract
+    if basepath.is_file() and is_tarfile(basepath):
+        # Autodetect the internal format from the filename
+        format = basepath.name.split('.')[-2]
+        with tarfile.open(basepath) as archive:
+            n_instances = sum(1 for member in archive if member.isreg())
+        mols = parser.parse_tar_archive(basepath, format, exclude=qm9_exclude)
+
+    # Detect if this is a directory
+    elif basepath.is_dir():
+        # Walk the basepath directory and discover all the
+        # g09 formatted output files
+        matched_paths = list(basepath.glob("./**/*f.out"))
+        mols = parser.parse_files(matched_paths)
+        n_instances = len(matched_paths)
+
+    else:
+        raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
     # If we are not given a file, write this to stdout **uncompressed**
     if not outpath:
-        for mol in mol_subset:
+        for mol in mols:
             sys.stdout.write(mol.write(format=config.extraction["output-format"]))
         return 0
 
-    n_mols = parser.write_compressed_sdf(mol_subset, outpath, len(matched_paths))
-    print(f"Filtered {FilteredMols.get_total()} instances. Written {n_mols} instances")
-    print(
-        [
-            (i, getattr(FilteredMols, i))
-            for i in vars(FilteredMols)
-            if not (callable(i) or i.startswith("_"))
-        ]
-    )
+    # Check the ouptut directory exists, and create if it does not
+    outpath = Path(outpath)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    if not outpath.name.endswith(".sdf.bz2"):
+        outpath = outpath.with_suffix(".sdf.bz2")
+
+    # Write the archive out
+    n_mols = parser.write_compressed_sdf(mols, outpath, n_instances)
+    print(f"Written {n_mols} instances out to {outpath}")
 
 
 def vectorize(args: Namespace) -> None:

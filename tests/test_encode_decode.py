@@ -1,6 +1,6 @@
 import argparse
 import openbabel.pybel as pb
-from molmagic.parser import read_sdf_archive, read_qm9_dir
+from molmagic.parser import read_sdf_archive, parse_tar_archive
 from molmagic.cli import parse
 from pathlib import Path
 import pytest
@@ -36,7 +36,7 @@ def test_decode():
 
 
 def test_qm9():
-    mols = read_qm9_dir("data/qm9/qm9.xyz.tar")
+    mols = parse_tar_archive("data/qm9/qm9.xyz.tar")
     a = next(mols)
     assert isinstance(a, pb.Molecule)
     assert "scf_energy" in a.data and "free_energy" in a.data

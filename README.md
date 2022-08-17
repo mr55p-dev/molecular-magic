@@ -6,28 +6,6 @@ Work is performed as part of the University of Nottingham Machine Learning in Sc
 ****
 </br>
 
-# MolE8 Reimplementation
-
-
-
-<!-- ## Setup
-
-### Virtual Environment
-- Run `conda env create -f environment.yml` to setup the environment.
-- Run `conda activate molemagic` to activate the environment.
-
-
-### MolMagic CLI
-- You can install the `molmagic` cli tool to make the dataset creation easier.
-- Run `pip install -e .` to install the `molmagic` script locally.
-- From a local terminal session, invoke the `molmagic` command to see allt he available subcommands
-
-### Dataset
-- Go to the  and download one or more dataset zip files (p1 to p7).
-- Create a folder called `moldata` and extract the files to this folder -->
-
-<!-- ---- -->
-
 ## How to run the code
 Much of the configuration for feature generation is controlled via `config.yml`. The properties are:
 - ### Extraction
