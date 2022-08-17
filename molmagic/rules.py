@@ -31,7 +31,7 @@ class FilteredMols:
                 FilteredMols.strained_angle,
                 FilteredMols.tetravalent_nitrogen,
                 FilteredMols.carbanion,
-                FilteredMols.disjoint_structure
+                FilteredMols.disjoint_structure,
             ]
         )
 
@@ -51,11 +51,12 @@ def global_filters(molecule: pb.Molecule) -> bool:
     """Defines filtering rules required for the proper function
     of the vectorizer"""
     # Disallow disconnected structures (hacky but it works)
-    smiles = molecule.write("smi").split('\t')[0]
-    if '.' in smiles:
+    smiles = molecule.write("smi").split("\t")[0]
+    if "." in smiles:
         FilteredMols.disjoint_structure += 1
         return False
     return True
+
 
 def local_filters(molecule: pb.Molecule) -> bool:
     """Defines filtering rules to eliminate molecules from the dataset.
@@ -67,20 +68,6 @@ def local_filters(molecule: pb.Molecule) -> bool:
     Can make a preprocessing step where the combined data is stored as keys
     in the sdf file and then a second script to read those sdfs and their
     properties"""
-
-
-    # Always remove lone protons
-    # for atom in ob.OBMolAtomIter(mol):
-    #     if atom.GetAtomicNum() != 1:
-    #         continue
-    #     if not [i for i in ob.OBAtomAtomIter(atom)]:
-    #         FilteredMols.lone_hydrogen += 1
-    #         return False
-
-    # Break if we are asked not to filter
-    if not cfg["use-filters"]:
-        return True
-
     mol = molecule.OBMol
 
     # Remove atoms other than HCNO
@@ -88,8 +75,14 @@ def local_filters(molecule: pb.Molecule) -> bool:
         FilteredMols.other_atom += 1
         return False
 
-    # Filter more than 8 heavy atoms
-    if len([i for i in molecule.atoms if i.atomicnum != 1]) > cfg["max-heavy-atoms"]:
+    # Filter out molecules of the wrong size
+    min_heavy_atoms = cfg["min-heavy-atoms"]
+    max_heavy_atoms = cfg["max-heavy-atoms"]
+    if not (
+        min_heavy_atoms
+        < len([i for i in molecule.atoms if i.atomicnum != 1])
+        < max_heavy_atoms
+    ):
         FilteredMols.heavy_atom += 1
         return False
 

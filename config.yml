@@ -4,6 +4,7 @@ extraction:
   output-format: "sdf"
   bond-min-distance: 0
   bond-max-distance: 1.6
+  min-heavy-atoms: 0
   max-heavy-atoms: 8
 
   # Configuration when extracting mol info
