@@ -1,5 +1,6 @@
 """Implementions of filtering rules used by the parser"""
 
+from logging import Filter
 from openbabel import pybel as pb, openbabel as ob
 from molmagic.config import extraction as cfg, aggregation as cfg_agg
 
@@ -37,14 +38,24 @@ class FilteredMols:
 
     @staticmethod
     def get_breakdown():
+        filter_categories = FilteredMols.get_filter_categories()
+        return "\t" + "\n\t".join(
+            [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
+        )
+
+    @staticmethod
+    def get_filter_categories():
         filter_categories = [
             (i, getattr(FilteredMols, i))
             for i in vars(FilteredMols)
             if not (callable(getattr(FilteredMols, i)) or i.startswith("_"))
         ]
-        return "\t" + "\n\t".join(
-            [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
-        )
+
+        return filter_categories
+
+    @staticmethod
+    def get_dict():
+        return dict(FilteredMols.get_filter_categories())
 
 
 def global_filters(molecule: pb.Molecule) -> bool:
@@ -80,8 +91,8 @@ def local_filters(molecule: pb.Molecule) -> bool:
     max_heavy_atoms = cfg["max-heavy-atoms"]
     if not (
         min_heavy_atoms
-        < len([i for i in molecule.atoms if i.atomicnum != 1])
-        < max_heavy_atoms
+        <= len([i for i in molecule.atoms if i.atomicnum != 1])
+        <= max_heavy_atoms
     ):
         FilteredMols.heavy_atom += 1
         return False

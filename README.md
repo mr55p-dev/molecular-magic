@@ -14,8 +14,8 @@ Much of the configuration for feature generation is controlled via `config.yml`.
   - `output-format`: The format to save instances as internally in the output bz2 archive. This should not be changed from `sdf` as nothing else is implemented.
   `bond-min-distance`: The minimum distance between all atoms. If a molecule contains a bond shorter than this, it is filtered out under the rule `long bonds`.
   - `bond-max-distance`: The maximum distance between all atoms. See above
-  - `min-heavy-atoms`: The minimum number of heavy atoms allowed in a molecule (exclusive). Heavy atoms count as any atom with an atomic number greater than 1.
-  - `max-heavy-atoms`: The maximum number of heavy atoms allowed in a molecule (exclusive). Heavy atoms count as any atom with an atomic number greater than 1.
+  - `min-heavy-atoms`: The minimum number of heavy atoms allowed in a molecule (inclusive). Heavy atoms count as any atom with an atomic number greater than 1.
+  - `max-heavy-atoms`: The maximum number of heavy atoms allowed in a molecule (inclusive). Heavy atoms count as any atom with an atomic number greater than 1.
   - #### Extraction configuration
   - `hbond-atoms`: The atom types (given as atomic numbers) which can take part in hydrogen bonding. Default behaviour is Nitrogen (7) and Oxygen (8)
   - `hbond-min-distance`: The minimum distance (in angstrom) between a hydrogen donor and hbond acceptor for a bond to be considered a hydrogen bond
