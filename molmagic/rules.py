@@ -80,8 +80,8 @@ def local_filters(molecule: pb.Molecule) -> bool:
     max_heavy_atoms = cfg["max-heavy-atoms"]
     if not (
         min_heavy_atoms
-        < len([i for i in molecule.atoms if i.atomicnum != 1])
-        < max_heavy_atoms
+        <= len([i for i in molecule.atoms if i.atomicnum != 1])
+        <= max_heavy_atoms
     ):
         FilteredMols.heavy_atom += 1
         return False
