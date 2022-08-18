@@ -46,6 +46,19 @@ class FilteredMols:
             [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
         )
 
+    @staticmethod
+    def get_dict():
+        return {
+            "other_atom": FilteredMols.other_atom,
+            "heavy_atom": FilteredMols.heavy_atom,
+            "zero_free_energy": FilteredMols.zero_free_energy,
+            "long_bond": FilteredMols.long_bond,
+            "strained_angle": FilteredMols.strained_angle,
+            "tetravalent_nitrogen": FilteredMols.tetravalent_nitrogen,
+            "carbanion": FilteredMols.carbanion,
+            "disjoint_structure": FilteredMols.disjoint_structure,
+        }
+
 
 def global_filters(molecule: pb.Molecule) -> bool:
     """Defines filtering rules required for the proper function

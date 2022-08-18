@@ -211,6 +211,7 @@ def vectorize(args: Namespace) -> None:
             entity="molecular-magicians",
         )
         wandb.config.update(cfg_agg)
+        wandb.config.update({"filter_stats": FilteredMols.get_dict()})
         artifact = wandb.Artifact(
             name=args.artifact,
             type="vectors",
