@@ -1,5 +1,6 @@
 """Implementions of filtering rules used by the parser"""
 
+from logging import Filter
 from openbabel import pybel as pb, openbabel as ob
 from molmagic.config import extraction as cfg, aggregation as cfg_agg
 
@@ -37,27 +38,24 @@ class FilteredMols:
 
     @staticmethod
     def get_breakdown():
-        filter_categories = [
-            (i, getattr(FilteredMols, i))
-            for i in vars(FilteredMols)
-            if not (callable(getattr(FilteredMols, i)) or i.startswith("_"))
-        ]
+        filter_categories = FilteredMols.get_filter_categories()
         return "\t" + "\n\t".join(
             [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
         )
 
     @staticmethod
+    def get_filter_categories():
+        filter_categories = [
+            (i, getattr(FilteredMols, i))
+            for i in vars(FilteredMols)
+            if not (callable(getattr(FilteredMols, i)) or i.startswith("_"))
+        ]
+
+        return filter_categories
+
+    @staticmethod
     def get_dict():
-        return {
-            "other_atom": FilteredMols.other_atom,
-            "heavy_atom": FilteredMols.heavy_atom,
-            "zero_free_energy": FilteredMols.zero_free_energy,
-            "long_bond": FilteredMols.long_bond,
-            "strained_angle": FilteredMols.strained_angle,
-            "tetravalent_nitrogen": FilteredMols.tetravalent_nitrogen,
-            "carbanion": FilteredMols.carbanion,
-            "disjoint_structure": FilteredMols.disjoint_structure,
-        }
+        return dict(FilteredMols.get_filter_categories())
 
 
 def global_filters(molecule: pb.Molecule) -> bool:
