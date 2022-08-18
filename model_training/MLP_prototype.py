@@ -23,7 +23,7 @@ basepath = ml.get_artifact("qm9-light-bw_scott:latest")
 
 X = np.load(basepath / "features.npy")
 y_raw = np.load(basepath / "labels.npy").astype(np.double)
-y = ml.get_label_type(label_type)
+y = ml.get_label_type(y_raw, label_type)
 
 splitter = ml.get_split(split_type)
 X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
