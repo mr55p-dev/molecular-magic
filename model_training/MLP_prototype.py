@@ -62,7 +62,7 @@ with strategy.scope():
 
     # Create the configuration object
     wandb_config = {"splitting_type": split_type, "target_name": label_type}
-    ml.run_controller.config.update(wandb_config)
+    run.config.update(wandb_config)
 
     # Fit the model
     callbacks = [
