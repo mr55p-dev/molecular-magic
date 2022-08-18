@@ -13,10 +13,11 @@ tf.random.set_seed(random_seed)
 gpus = tf.config.list_logical_devices("GPU")
 
 # Dataset loading
-basepath = ml.get_artifact("qm9-filtered:latest")
+basepath = ml.get_artifact("qm9-bw_scott:latest")
 
 X = np.load(basepath / "features.npy")
-y = np.load(basepath / "labels.npy").astype(np.double)
+y_raw = np.load(basepath / "labels.npy").astype(np.double)
+y = ml.get_label_type(y_raw, "free_energy")
 
 splitter = ml.get_split("stoichiometric")
 X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
