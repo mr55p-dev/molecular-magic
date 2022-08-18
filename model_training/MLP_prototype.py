@@ -14,7 +14,7 @@ strategy = tf.distribute.MirroredStrategy(gpus)
 
 # Experimental setup
 batch_size = 64
-epochs = 50
+epochs = 7000
 split_type = "random"
 label_type = "free_energy"
 

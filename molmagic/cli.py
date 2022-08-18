@@ -120,6 +120,7 @@ def parse(args: Namespace) -> None:
         # Save metadata
         artifact.metadata.update(cfg_agg)
         artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
+        artifact.metadata.update({"num_mols": n_molecules})
 
         # Upload and delete the archive
         wandb.log_artifact(artifact)
@@ -222,7 +223,8 @@ def vectorize(args: Namespace) -> None:
         artifact.add_file(metadata_output, name="metadata.yml")
 
         # Save metadata
-        artifact.metadata.update(cfg_ext)
+        artifact.metadata.update(cfg_agg)
+        artifact.metadata.update({"n_instances": features_vector.shape[0], "n_features": features_vector.shape[1]})
 
         # Check if we need to log figures
         if args.plot_histograms:
