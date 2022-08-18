@@ -1,9 +1,11 @@
 # Imports and initialisation
 import numpy as np
 import tensorflow as tf
-
+import wandb
 from molmagic import ml
-from molmagic.config import aggregation as cfg_aggregation, extraction as cfg_extraction
+from molmagic.config import aggregation as cfg_aggregation
+from molmagic.config import extraction as cfg_extraction
+from molmagic.ml import run_controller
 from wandb.keras import WandbCallback
 
 # TF setup
@@ -12,14 +14,24 @@ tf.random.set_seed(random_seed)
 gpus = tf.config.list_logical_devices("GPU")
 strategy = tf.distribute.MirroredStrategy(gpus)
 
+# WandB setup
+run = wandb.init(
+    project="MolecularMagic",
+    entity="molecular-magicians",
+    name="test",
+    group="test_group",
+    job_type="training",
+)
+run_controller.set_run(run)
+
 # Experimental setup
 batch_size = 64
 epochs = 7000
 split_type = "random"
 label_type = "free_energy"
 
-# Dataset loading
-basepath = ml.get_artifact("qm9-light-bw_scott:latest")
+# Dataset loading (also inits a wandb run if not done explicitly)
+basepath = ml.get_vector_artifact("qm9-light-bw_scott:latest")
 
 X = np.load(basepath / "features.npy")
 y_raw = np.load(basepath / "labels.npy").astype(np.double)
@@ -30,8 +42,8 @@ X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
 
 # Define learning rate schedule
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=[576 * 100, 576 * 300], # 576 * 500
-    values=[1e-2, 1e-3, 1e-5], # , 1e-7
+    boundaries=[576 * 100, 576 * 300],  # 576 * 500
+    values=[1e-2, 1e-3, 1e-5],  # , 1e-7
     name="lr_decay",
 )
 
@@ -50,7 +62,7 @@ with strategy.scope():
 
     # Create the configuration object
     wandb_config = {"splitting_type": split_type, "target_name": label_type}
-    ml.run.config.update(wandb_config)
+    ml.run_controller.config.update(wandb_config)
 
     # Fit the model
     callbacks = [

@@ -29,12 +29,12 @@ from molmagic.config import (
 )
 from molmagic import parser
 from molmagic import vectorizer
+from molmagic import ml
 from molmagic.aggregator import autobin_mols, bin_mols
 from molmagic.rules import FilteredMols, global_filters, local_filters
 import numpy as np
 from pathlib import Path
 import sys
-import wandb
 
 
 def parse(args: Namespace) -> None:
@@ -61,24 +61,10 @@ def parse(args: Namespace) -> None:
 
     # Detect if this is a tar archive to extract
     if input_path.is_file():
-        # Check the file is readable
-        if not is_tarfile(input_path):
-            raise tarfile.ReadError("Tarfile is not readable")
-        # Autodetect the internal format from the filename
-        fmt = input_path.name.split(".")[-2]
-        # Get the number of entries in the archive
-        with tarfile.open(input_path) as archive:
-            n_instances = sum(1 for member in archive if member.isreg())
-        molecules = parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude)
-
+        molecules, n_instances = _parse_tar_dir(input_path)
     # Detect if this is a directory
     elif input_path.is_dir():
-        # Walk the basepath directory and discover all the
-        # g09 formatted output files
-        matched_paths = list(input_path.glob("./**/*f.out"))
-        molecules = parser.parse_files(matched_paths)
-        n_instances = len(matched_paths)
-
+        n_instances = _parse_g09_dir(input_path)
     else:
         raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
@@ -115,21 +101,29 @@ def parse(args: Namespace) -> None:
 
     # Write this archive to a wandb archive (if asked to)
     if args.artifact:
-        wandb.init(
-            project="MolecularMagic",
-            entity="molecular-magicians",
-        )
-        artifact = wandb.Artifact(args.artifact, type="dataset")
-        artifact.add_file(output_path, name="archive.sdf.bz2")
-
-        # Save metadata
-        artifact.metadata.update(cfg_agg)
-        artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
-        artifact.metadata.update({"num_mols": n_molecules})
-
-        # Upload and delete the archive
-        wandb.log_artifact(artifact)
+        ml._log_parser_artifact(args, output_path, n_molecules)
         output_path.unlink()
+
+
+def _parse_g09_dir(input_path: Path):
+    # Walk the basepath directory and discover all the
+    # g09 formatted output files
+    matched_paths = list(input_path.glob("./**/*f.out"))
+    molecules = parser.parse_files(matched_paths)
+    n_instances = len(matched_paths)
+    return molecules, n_instances
+
+
+def _parse_tar_dir(input_path: Path):
+    # Check the file is readable
+    if not is_tarfile(input_path):
+        raise tarfile.ReadError("Tarfile is not readable")
+    # Autodetect the internal format from the filename
+    fmt = input_path.name.split(".")[-2]
+    # Get the number of entries in the archive
+    with tarfile.open(input_path) as archive:
+        n_instances = sum(1 for member in archive if member.isreg())
+    return parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
 def vectorize(args: Namespace) -> None:
@@ -138,16 +132,7 @@ def vectorize(args: Namespace) -> None:
     """
     # If no archive is specified load an artifact
     if args.load:
-        run = wandb.init(
-            project="MolecularMagic",
-            entity="molecular-magicians",
-        )
-        artifact = run.use_artifact(args.load, type="dataset")
-        download_path = Path("/tmp") / artifact.name
-        if download_path.exists():
-            shutil.rmtree(download_path)
-        artifact.download(download_path)
-        input_path = download_path / "archive.sdf.bz2"
+        input_path = ml._get_parser_artifact(args)
     else:
         input_path = args.input
 
@@ -212,35 +197,14 @@ def vectorize(args: Namespace) -> None:
 
     # Create an artifact if we are asked to do so
     if args.artifact:
-        wandb.init(
-            project="MolecularMagic",
-            entity="molecular-magicians",
+        ml._log_vector_artifact(
+            args,
+            feature_vector,
+            features_output,
+            labels_output,
+            identities_output,
+            metadata_output,
         )
-        artifact = wandb.Artifact(
-            name=args.artifact,
-            type="vectors",
-            description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
-        )
-        # Upload the files
-        artifact.add_file(features_output, name="features.npy")
-        artifact.add_file(labels_output, name="labels.npy")
-        artifact.add_file(identities_output, name="identities.npy")
-        artifact.add_file(metadata_output, name="metadata.yml")
-
-        # Save metadata
-        artifact.metadata.update(cfg_agg)
-        artifact.metadata.update(
-            {
-                "n_instances": feature_vector.shape[0],
-                "n_features": feature_vector.shape[1],
-            }
-        )
-
-        # Check if we need to log figures
-        if args.plot_histograms:
-            artifact.add_dir(cfg_plot["save-dir"])
-
-        wandb.log_artifact(artifact)
 
     # Unlink the created files if we are not saving output
     if not args.output:
