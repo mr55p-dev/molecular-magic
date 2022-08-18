@@ -12,23 +12,26 @@ tf.random.set_seed(random_seed)
 gpus = tf.config.list_logical_devices("GPU")
 strategy = tf.distribute.MirroredStrategy(gpus)
 
-# Dataset loading
-basepath = ml.get_artifact("qm9-filtered:latest")
-
-X = np.load(basepath / "features.npy")
-y = np.load(basepath / "labels.npy").astype(np.double)
-
-splitter = ml.get_split("stoichiometric")
-X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
-
 # Experimental setup
 batch_size = 64
 epochs = 50
+split_type = "random"
+label_type = "free_energy"
+
+# Dataset loading
+basepath = ml.get_artifact("qm9-light-bw_scott:latest")
+
+X = np.load(basepath / "features.npy")
+y_raw = np.load(basepath / "labels.npy").astype(np.double)
+y = ml.get_label_type(label_type)
+
+splitter = ml.get_split(split_type)
+X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
 
 # Define learning rate schedule
 lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=[691 * 10, 691 * 30, 691 * 60, 691 * 400],
-    values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6],
+    boundaries=[576 * 100, 576 * 300], # 576 * 500
+    values=[1e-2, 1e-3, 1e-5], # , 1e-7
     name="lr_decay",
 )
 
@@ -46,7 +49,7 @@ with strategy.scope():
     model.compile(loss=loss, optimizer=op, metrics=["mse", "mae"])
 
     # Create the configuration object
-    wandb_config = {}
+    wandb_config = {"splitting_type": split_type, "target_name": label_type}
     ml.run.config.update(wandb_config)
 
     # Fit the model
