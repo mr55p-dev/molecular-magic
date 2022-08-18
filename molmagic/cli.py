@@ -21,7 +21,12 @@ import tarfile
 
 import oyaml as yaml
 from tqdm import tqdm
-from molmagic.config import extraction as cfg_ext, qm9_exclude, plotting as cfg_plot, aggregation as cfg_agg
+from molmagic.config import (
+    extraction as cfg_ext,
+    qm9_exclude,
+    plotting as cfg_plot,
+    aggregation as cfg_agg,
+)
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
@@ -224,7 +229,12 @@ def vectorize(args: Namespace) -> None:
 
         # Save metadata
         artifact.metadata.update(cfg_agg)
-        artifact.metadata.update({"n_instances": features_vector.shape[0], "n_features": features_vector.shape[1]})
+        artifact.metadata.update(
+            {
+                "n_instances": feature_vector.shape[0],
+                "n_features": feature_vector.shape[1],
+            }
+        )
 
         # Check if we need to log figures
         if args.plot_histograms:
