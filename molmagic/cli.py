@@ -21,7 +21,12 @@ import tarfile
 
 import oyaml as yaml
 from tqdm import tqdm
-from molmagic.config import extraction as cfg_ext, qm9_exclude, plotting as cfg_plot
+from molmagic.config import (
+    extraction as cfg_ext,
+    qm9_exclude,
+    aggregation as cfg_agg,
+    plotting as cfg_plot,
+)
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
@@ -114,6 +119,7 @@ def parse(args: Namespace) -> None:
             project="MolecularMagic",
             entity="molecular-magicians",
         )
+        wandb.config.update(cfg_ext)
         artifact = wandb.Artifact(args.artifact, type="dataset")
         artifact.add_file(output_path, name="archive.sdf.bz2")
         wandb.log_artifact(artifact)
@@ -204,6 +210,7 @@ def vectorize(args: Namespace) -> None:
             project="MolecularMagic",
             entity="molecular-magicians",
         )
+        wandb.config.update(cfg_agg)
         artifact = wandb.Artifact(
             name=args.artifact,
             type="vectors",
