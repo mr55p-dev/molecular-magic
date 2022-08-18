@@ -1,5 +1,6 @@
 """Implementions of filtering rules used by the parser"""
 
+from logging import Filter
 from openbabel import pybel as pb, openbabel as ob
 from molmagic.config import extraction as cfg, aggregation as cfg_agg
 
@@ -18,7 +19,7 @@ class FilteredMols:
     strained_angle = 0
     tetravalent_nitrogen = 0
     carbanion = 0
-    lone_hydrogen = 0
+    disjoint_structure = 0
 
     @staticmethod
     def get_total():
@@ -31,22 +32,44 @@ class FilteredMols:
                 FilteredMols.strained_angle,
                 FilteredMols.tetravalent_nitrogen,
                 FilteredMols.carbanion,
+                FilteredMols.disjoint_structure,
             ]
         )
 
     @staticmethod
     def get_breakdown():
+        filter_categories = FilteredMols.get_filter_categories()
+        return "\t" + "\n\t".join(
+            [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
+        )
+
+    @staticmethod
+    def get_filter_categories():
         filter_categories = [
             (i, getattr(FilteredMols, i))
             for i in vars(FilteredMols)
             if not (callable(getattr(FilteredMols, i)) or i.startswith("_"))
         ]
-        return "\t" + "\n\t".join(
-            [f"{name.replace('_', ' ')}: {count}" for name, count in filter_categories]
-        )
+
+        return filter_categories
+
+    @staticmethod
+    def get_dict():
+        return dict(FilteredMols.get_filter_categories())
 
 
-def filter_mols(molecule: pb.Molecule) -> bool:
+def global_filters(molecule: pb.Molecule) -> bool:
+    """Defines filtering rules required for the proper function
+    of the vectorizer"""
+    # Disallow disconnected structures (hacky but it works)
+    smiles = molecule.write("smi").split("\t")[0]
+    if "." in smiles:
+        FilteredMols.disjoint_structure += 1
+        return False
+    return True
+
+
+def local_filters(molecule: pb.Molecule) -> bool:
     """Defines filtering rules to eliminate molecules from the dataset.
 
     If new molecules are added, it will need to check everything from the
@@ -56,8 +79,6 @@ def filter_mols(molecule: pb.Molecule) -> bool:
     Can make a preprocessing step where the combined data is stored as keys
     in the sdf file and then a second script to read those sdfs and their
     properties"""
-    if not cfg["use-filters"]:
-        return True
     mol = molecule.OBMol
 
     # Remove atoms other than HCNO
@@ -65,8 +86,14 @@ def filter_mols(molecule: pb.Molecule) -> bool:
         FilteredMols.other_atom += 1
         return False
 
-    # Filter more than 8 heavy atoms
-    if len([i for i in molecule.atoms if i.atomicnum != 1]) > cfg["max-heavy-atoms"]:
+    # Filter out molecules of the wrong size
+    min_heavy_atoms = cfg["min-heavy-atoms"]
+    max_heavy_atoms = cfg["max-heavy-atoms"]
+    if not (
+        min_heavy_atoms
+        <= len([i for i in molecule.atoms if i.atomicnum != 1])
+        <= max_heavy_atoms
+    ):
         FilteredMols.heavy_atom += 1
         return False
 
@@ -141,14 +168,6 @@ def filter_mols(molecule: pb.Molecule) -> bool:
 
         if all(i in carbanion_checklist for i in atom_types):
             FilteredMols.carbanion += 1
-            return False
-
-    # Remove lone protons
-    for atom in ob.OBMolAtomIter(mol):
-        if atom.GetAtomicNum() != 1:
-            continue
-        if not [i for i in ob.OBAtomAtomIter(atom)]:
-            FilteredMols.lone_hydrogen += 1
             return False
 
     return True

@@ -2,7 +2,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from molmagic.config import plotting as cfg
+from molmagic.config import plotting as cfg, element_map
 
 
 sns.set_style(cfg["plot-style"])
@@ -12,7 +12,6 @@ def get_plot_name(feature_name: str, atom_sequence: tuple[int]) -> tuple[str]:
     """Calculate the name of a plot based on the feature and atom sequence"""
 
     # TODO: #45 Use the feature name to get a more accurate plot name
-    element_map = {1: "H", 6: "C", 7: "N", 8: "O"}
 
     if feature_name == "hbonds":
         # Hbonds are a special case

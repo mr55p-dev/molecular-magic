@@ -4,7 +4,8 @@ extraction:
   output-format: "sdf"
   bond-min-distance: 0
   bond-max-distance: 1.6
-  max-heavy-atoms: 8
+  min-heavy-atoms: 9
+  max-heavy-atoms: 12
 
   # Configuration when extracting mol info
   hbond-atoms:
@@ -17,12 +18,8 @@ extraction:
 aggregation:
   # Histogram creation configuration
   resolution: 10000
-  bandwidth: 0.07  # scott, sliverman, float or none
-  use-minmax: false
-
-  # Label to use
-  # Can be scf_energy, free_energy, net_charge
-  label-name: "free_energy"
+  bandwidth: scott  # scott, sliverman, float or none
+  use-minmax: true
 
   # Feature creation config
   atom-types:
@@ -41,7 +38,7 @@ aggregation:
     - "hbonds"
 
 plotting:
-  save-dir: "./data/magic/figures"
+  save-dir: "./data/qm9/figures/bw0.07-unfiltered"
   show-dist: true
   show-kde: true
   plot-style: "whitegrid"
