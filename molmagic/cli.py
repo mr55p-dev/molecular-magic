@@ -21,12 +21,7 @@ import tarfile
 
 import oyaml as yaml
 from tqdm import tqdm
-from molmagic.config import (
-    extraction as cfg_ext,
-    qm9_exclude,
-    aggregation as cfg_agg,
-    plotting as cfg_plot,
-)
+from molmagic.config import extraction as cfg_ext, qm9_exclude, plotting as cfg_plot, aggregation as cfg_agg
 from molmagic import parser
 from molmagic import vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
@@ -119,9 +114,14 @@ def parse(args: Namespace) -> None:
             project="MolecularMagic",
             entity="molecular-magicians",
         )
-        wandb.config.update(cfg_ext)
         artifact = wandb.Artifact(args.artifact, type="dataset")
         artifact.add_file(output_path, name="archive.sdf.bz2")
+
+        # Save metadata
+        artifact.metadata.update(cfg_agg)
+        artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
+
+        # Upload and delete the archive
         wandb.log_artifact(artifact)
         output_path.unlink()
 
@@ -210,8 +210,6 @@ def vectorize(args: Namespace) -> None:
             project="MolecularMagic",
             entity="molecular-magicians",
         )
-        wandb.config.update(cfg_agg)
-        wandb.config.update({"filter_stats": FilteredMols.get_dict()})
         artifact = wandb.Artifact(
             name=args.artifact,
             type="vectors",
@@ -222,6 +220,9 @@ def vectorize(args: Namespace) -> None:
         artifact.add_file(labels_output, name="labels.npy")
         artifact.add_file(identities_output, name="identities.npy")
         artifact.add_file(metadata_output, name="metadata.yml")
+
+        # Save metadata
+        artifact.metadata.update(cfg_ext)
 
         # Check if we need to log figures
         if args.plot_histograms:
