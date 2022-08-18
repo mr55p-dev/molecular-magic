@@ -40,9 +40,9 @@ def log_model(model: tf.keras.Model) -> None:
 
 def get_label_type(arr: np.ndarray, label_type: str) -> np.ndarray:
     if label_type == 'electronic_energy':
-        return arr[0]
+        return arr[:, 0]
     elif label_type == 'free_energy':
-        return arr[1]
+        return arr[:, 1]
 
 
 def get_split(type: str) -> Callable:
