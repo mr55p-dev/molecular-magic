@@ -1,6 +1,6 @@
 import argparse
 import openbabel.pybel as pb
-from molmagic.parser import read_sdf_archive
+from molmagic.parser import read_sdf_archive, parse_tar_archive
 from molmagic.cli import parse
 from pathlib import Path
 import pytest
@@ -33,3 +33,10 @@ def test_decode():
 
     # Check the energy can be cast to float and is negative
     assert float(first_mol.data["scf_energy"]) < 0
+
+
+def test_qm9():
+    mols = parse_tar_archive("data/qm9/qm9.xyz.tar")
+    a = next(mols)
+    assert isinstance(a, pb.Molecule)
+    assert "scf_energy" in a.data and "free_energy" in a.data

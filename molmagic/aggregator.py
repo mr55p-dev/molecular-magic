@@ -6,7 +6,6 @@ from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, TypeVar
 from tqdm import tqdm
-import oyaml as yaml
 from molmagic.graphing import get_plot_name
 from molmagic.vectorizer import HistogramData, MoleculeData
 from molmagic.config import aggregation as cfg
@@ -172,7 +171,9 @@ def _make_static_parts(
     # Get target vector. This should be encoded in the SDF archive in
     # the first step
     target_name = config["label-name"]
-    target_vector = np.array([float(i.data[target_name]) for i in mols]).astype(np.float32)
+    target_vector = np.array([float(i.data[target_name]) for i in mols]).astype(
+        np.float32
+    )
 
     # Get the atom count vectors. The atoms used are defined in config
     accounted_atom_types = config["atom-types"]
@@ -356,6 +357,7 @@ def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # TO-DO: This may be able to be improved using counter or list comprehension
 
     return vec
+
 
 def _get_feature_data(mols: list[MoleculeData], feature: str) -> list[Any]:
     """Extract a single attribute (feature) from the MoleculeData class.
