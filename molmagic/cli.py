@@ -118,7 +118,7 @@ def parse(args: Namespace) -> None:
         artifact.add_file(output_path, name="archive.sdf.bz2")
 
         # Save metadata
-        artifact.metadata.update(cfg_agg)
+        artifact.metadata.update(cfg_ext)
         artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
 
         # Upload and delete the archive
