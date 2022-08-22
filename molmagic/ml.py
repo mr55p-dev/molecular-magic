@@ -56,7 +56,6 @@ def get_vector_parent(name: str) -> Path:
     return producer_dataset.download()
 
 
-
 def get_vector_artifact(name: str) -> Path:
     """Download a vector dataset by name"""
     artifact = run_controller.use_run().use_artifact(name, type="vectors")
