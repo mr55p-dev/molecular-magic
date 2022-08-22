@@ -33,8 +33,32 @@ class WandBRun:
 run_controller = WandBRun()
 
 
-def get_vector_artifact(name: str):
-    """Download an artifact by name"""
+def get_model_artifact(name: str) -> tf.keras.Model:
+    """Download a model by name"""
+    artifact = run_controller.use_run().use_artifact(name, type="model")
+    model_path = artifact.download()
+    model = tf.keras.models.load_model(model_path)
+    shutil.rmtree(model_path)
+    return model
+
+
+def get_vector_parent(name: str) -> Path:
+    """Get the dataset version which generated a vector dataset"""
+    api = wandb.Api()
+    artifact = api.artifact(name)
+
+    producer_run = artifact.logged_by()
+    consumed_artifcacts = producer_run.used_artifacts()
+    consumed_datasets = [i for i in consumed_artifcacts if i.type == "dataset"]
+    assert len(consumed_datasets) == 1
+
+    producer_dataset = consumed_datasets[0]
+    return producer_dataset.download()
+
+
+
+def get_vector_artifact(name: str) -> Path:
+    """Download a vector dataset by name"""
     artifact = run_controller.use_run().use_artifact(name, type="vectors")
     download_path = Path("/tmp/")
     artifact.download(download_path)
