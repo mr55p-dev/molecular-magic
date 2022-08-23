@@ -36,16 +36,16 @@ run_controller = WandBRun()
 def get_model_artifact(name: str) -> tf.keras.Model:
     """Download a model by name"""
     artifact = run_controller.use_run().use_artifact(name, type="model")
-    model_path = artifact.download()
-    model = tf.keras.models.load_model(model_path)
+    model_path = Path(artifact.download())
+    model = tf.keras.models.load_model(model_path / "model")
     shutil.rmtree(model_path)
     return model
 
 
-def get_vector_parent(name: str) -> Path:
+def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
     """Get the dataset version which generated a vector dataset"""
     api = wandb.Api()
-    artifact = api.artifact(name)
+    artifact = api.artifact(project + "/" + name)
 
     producer_run = artifact.logged_by()
     consumed_artifcacts = producer_run.used_artifacts()
@@ -53,26 +53,22 @@ def get_vector_parent(name: str) -> Path:
     assert len(consumed_datasets) == 1
 
     producer_dataset = consumed_datasets[0]
-    return producer_dataset.download()
+    return Path(producer_dataset.download())
 
 
 def get_vector_artifact(name: str) -> Path:
     """Download a vector dataset by name"""
     artifact = run_controller.use_run().use_artifact(name, type="vectors")
-    download_path = Path("/tmp/")
-    artifact.download(download_path)
+    download_path = artifact.download()
 
-    return download_path
+    return Path(download_path)
 
 
 def _get_parser_artifact(args) -> Path:
     run = run_controller.use_run(job_type="vectorizer")
     artifact = run.use_artifact(args.load, type="dataset")
-    download_path = Path("/tmp") / artifact.name
-    if download_path.exists():
-        shutil.rmtree(download_path)
-    artifact.download(download_path)
-    return download_path / "archive.sdf.bz2"
+    download_path = artifact.download()
+    return Path(download_path) / "archive.sdf.bz2"
 
 
 def _log_parser_artifact(args, output_path, n_molecules):
