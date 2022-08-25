@@ -64,7 +64,7 @@ def parse(args: Namespace) -> None:
         molecules, n_instances = _parse_tar_dir(input_path)
     # Detect if this is a directory
     elif input_path.is_dir():
-        n_instances = _parse_g09_dir(input_path)
+        molecules, n_instances = _parse_g09_dir(input_path)
     else:
         raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
