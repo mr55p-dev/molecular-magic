@@ -64,17 +64,17 @@ def get_vector_artifact(name: str) -> Path:
     return Path(download_path)
 
 
-def _get_parser_artifact(args) -> Path:
+def get_dataset_artifact(name: str) -> Path:
     run = run_controller.use_run(job_type="vectorizer")
-    artifact = run.use_artifact(args.load, type="dataset")
+    artifact = run.use_artifact(name, type="dataset")
     download_path = artifact.download()
     return Path(download_path) / "archive.sdf.bz2"
 
 
-def _log_parser_artifact(args, output_path, n_molecules):
+def log_parser_artifact(artifact_name: str, output_path: Path, n_molecules: int) -> None:
     """Save a parsed output file"""
     run = run_controller.use_run(job_type="parser")
-    artifact = wandb.Artifact(args.artifact, type="dataset")
+    artifact = wandb.Artifact(artifact_name, type="dataset")
     artifact.add_file(output_path, name="archive.sdf.bz2")
 
     # Save metadata

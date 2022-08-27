@@ -15,7 +15,7 @@ import tarfile
 from tqdm import tqdm
 
 
-def parse_files(paths: list[Path]) -> Iterable[str]:
+def parse_files(paths: list[Path]) -> Iterable[pb.Molecule]:
     """Iterate over a sequence of dft file paths
     and return each one parsed in the order given"""
 
@@ -148,7 +148,7 @@ def read_sdf_archive(archive_path: Path) -> Iterable[pb.Molecule]:
 
 
 def write_compressed_sdf(
-    mol_subset: list[pb.Molecule], outpath: PathLike, matched_paths: int = None
+    mol_subset: list[pb.Molecule], outpath: PathLike, n_instances: int = None
 ) -> int:
     # Create a compression object
     compressor = bz2.BZ2Compressor()
@@ -157,7 +157,7 @@ def write_compressed_sdf(
     n_mols = 0
     with outpath.open("wb") as buffer:
         # Iterate the molecules
-        for mol in tqdm(mol_subset, total=matched_paths if matched_paths else None, leave=False):
+        for mol in tqdm(mol_subset, total=n_instances if n_instances else None, leave=False):
             # Pybel returns a string if no output file is provided
             raw_output: str = mol.write(format=cfg["output-format"])
             # Encode the string to utf8 bytes

@@ -1,6 +1,5 @@
 extraction:
   # Filter configuration
-  use-filters: true
   output-format: "sdf"
   bond-min-distance: 0
   bond-max-distance: 1.6
@@ -18,7 +17,7 @@ extraction:
 aggregation:
   # Histogram creation configuration
   resolution: 10000
-  bandwidth: scott  # scott, sliverman, float or none
+  bandwidth: 0.07  # scott, sliverman, float or none
   use-minmax: true
 
   # Feature creation config
@@ -27,6 +26,7 @@ aggregation:
     - 6
     - 7
     - 8
+    - 9
   amine-types:
     - 1
     - 2
@@ -38,7 +38,7 @@ aggregation:
     - "hbonds"
 
 plotting:
-  save-dir: "./data/qm9/figures/bw0.07-unfiltered"
+  save-dir: "./data/qm9/figures/bw0.07unfiltered"
   show-dist: true
   show-kde: true
   plot-style: "whitegrid"

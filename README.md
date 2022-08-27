@@ -99,6 +99,41 @@ The workspace which contains runs and information is hosted [here](https://wandb
 ## Openbabel
 `openbabel` used in the project seems to be version `2.x.x` however this can't be verified due to no requirements file being included. Instead of using this it seems better to migrate to version `3.1.1` and moving forward take advantage of the `pybabel` API rather than the auto-generated C++ bindings. Some corrections which appear to be related to the version change are being made to the original code.
 
+## Substructure SMARTS strings
+Taken from [daylight](https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html#N)
+- Alkyl carbon: `[CX4]`
+- Arene carbon: `c`
+- Arene nitrogen: `n`
+- Ortho-substituted ring: `*-!:aa-!:*`
+- Meta-substituted ring: `*-!:aaa-!:*`
+- Para-substituted ring: `*-!:aaaa-!:*`
+- Generic hydroxyl: `[OX2H]`
+- Phenol: `[OX2H][cX3]:[c]`
+- Ketone: `[#6][CX3](=O)[#6]`
+- Aldehyde: `[CX3H1](=O)[#6]`
+- Carboxylic acid: `[CX3](=O)[OX2H1]`
+- Imine: `[CX3;$([C]([#6])[#6]),$([CH][#6])]=[NX2][#6]`
+- Enamine: `[NX3][CX3]=[CX3]`
+- Nitro: `[$([NX3](=O)=O),$([NX3+](=O)[O-])][!#8]`
+- Nitrile: `[NX1]#[CX2]`
+- Peroxide: `[OX2,OX1-][OX2,OX1-]`
+- sp2 Aromatic carbon: `[$([cX3](:*):*),$([cX2+](:*):*)]`
+- sp2 carbon: `[$([cX3](:*):*),$([cX2+](:*):*),$([CX3]=*),$([CX2+]=*)]`
+- sp2 Nitrogen: `[$([nX3](:*):*),$([nX2](:*):*),$([#7X2]=*),$([NX3](=*)=*),$([#7X3+](-*)=*),$([#7X3+H]=*)]`
+- sp3 Nitrogen: `[$([NX4+]),$([NX3]);!$(*=*)&!$(*:*)]`
+- Amide: `[NX3][CX3](=[OX1])[#6]`
+
+## Pipeline
+1. Parse a train set of molecules into an sdf archive (write out to artifact)
+2. Parse a test set of molecules into an sdf archive (same applies)
+3. Vectorize the train data and generate metadata (artifact again)
+4. Vectorize the test data based on the rules established by train data
+5. (optionally) Search for optimal model paramteres
+6. Train the model on the training data, holding some out for validation (model is an artifact)
+   - Save the final per-example errors by molecule id
+7. Test the model on the testing dataset, generating a set of errors for the mols in the test data
+8. Analyse the error distribution across the train and test sets
+
 <!-- - Install Git LFS (https://git-lfs.github.com/) and run the following commands in the local git folder:
   - `git lfs install`
   - `git lfs fetch`

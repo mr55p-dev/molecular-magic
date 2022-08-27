@@ -1,115 +1,116 @@
-from datetime import datetime
-import tensorflow as tf
+# Imports and initialisation
 import numpy as np
-from molmagic.split import stoichiometric_split as split
-from pathlib import Path
+import tensorflow as tf
+import wandb
+from molmagic import ml
+from molmagic.ml import run_controller
 from wandb.keras import WandbCallback
 
-# from molmagic.config import
-import wandb
 
-
-# Load dataset
-data_dir = Path("./data/qm9/qm9")
-features = np.load(data_dir / "features.npy")
-labels = np.load(data_dir / "labels.npy")
-X_train, X_test, y_train, y_test = split(features, labels)
-
-# Set parameters
-tensorboard_output = Path("./MolE8/") / "tb_log"
-n_features = X_train.shape[1]
-n_nodes = 761
+# Vars
+split_type = "stoichiometric"
+label_type = "free_energy"
+training_artifact = "qm9-std_scott:latest"
 batch_size = 64
 epochs = 7000
 learning_rate = 1e-7
+n_nodes = 761
 
-# Set initializers
-kernel_initialiser = tf.keras.initializers.RandomUniform(minval=-500, maxval=100)
-kernel_initialiser2 = tf.keras.initializers.RandomUniform(minval=0, maxval=0.1)
-bias_initialiser = tf.keras.initializers.RandomUniform(minval=0, maxval=10)
-bias_initialiser2 = tf.keras.initializers.RandomUniform(minval=0, maxval=0.01)
+# TF setup
+random_seed = 50
+tf.random.set_seed(random_seed)
+gpus = tf.config.list_logical_devices("GPU")
+strategy = tf.distribute.MirroredStrategy(gpus)
 
-# Create the model
-input = tf.keras.Input(shape=n_features)
-layer = tf.keras.layers.Dense(
-    units=761,
-    activation="relu",
-    kernel_initializer=kernel_initialiser,
-    bias_initializer=bias_initialiser,
-    kernel_regularizer=tf.keras.regularizers.l2(0.1),
-    bias_regularizer=tf.keras.regularizers.l2(0.1),
-)(input)
-layer = tf.keras.layers.Dense(
-    units=761,
-    activation="relu",
-    kernel_initializer=kernel_initialiser,
-    bias_initializer=bias_initialiser,
-    kernel_regularizer=tf.keras.regularizers.l2(0.1),
-    bias_regularizer=tf.keras.regularizers.l2(0.1),
-)(layer)
-output = tf.keras.layers.Dense(
-    units=761,
-    activation="linear",
-    kernel_initializer=kernel_initialiser,
-    bias_initializer=bias_initialiser,
-    kernel_regularizer=tf.keras.regularizers.l2(0.1),
-    bias_regularizer=tf.keras.regularizers.l2(0.1),
-)(layer)
-
-# Compile the model
-model = tf.keras.Model(inputs=input, outputs=output)
-optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-loss_function = tf.keras.losses.MeanSquaredError()
-
-model.compile(
-    optimizer=optimizer,
-    loss=loss_function,
-    metrics=["mse", "mae"],
-)
-
-
-def get_tensorboard_callback(log_root: Path = Path("logs/")):
-    now = datetime.now()
-    time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
-    return tf.keras.callbacks.TensorBoard(log_dir=str(log_root / time_str))
-
-
-# Experiment tracking
-wandb_config = {
-    "partitioning method": split.__name__,
-    "learning rate": learning_rate,
-    "batch size": batch_size,
-    "number of features": n_features,
-    "MolE8 model": True,
-}
-wandb.init(
+# WandB setup
+run = wandb.init(
     project="MolecularMagic",
     entity="molecular-magicians",
-    config=wandb_config,
+    name="test",
+    # group="test_group",
+    job_type="training",
 )
+run_controller.set_run(run)
 
-# Version dataset
-dataset_artifact = wandb.Artifact(
-    name="qm9_filtered",
-    type="dataset",
-)
-dataset_artifact.add_dir(data_dir)
-wandb.log_artifact(dataset_artifact)
+# Dataset loading (also inits a wandb run if not done explicitly)
+basepath = ml.get_vector_artifact(training_artifact)
 
-# Fit the model
-hist = model.fit(
-    x=X_train,
-    y=y_train,
-    validation_data=(X_test, y_test),
-    batch_size=batch_size,
-    epochs=epochs,
-    callbacks=[
-        get_tensorboard_callback(tensorboard_output),
+X = np.load(basepath / "features.npy")
+y_raw = np.load(basepath / "labels.npy").astype(np.double)
+y = ml.get_label_type(y_raw, label_type)
+
+splitter = ml.get_split(split_type)
+X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
+n_features = X_train.shape[1]
+
+with strategy.scope():
+    # Set initializers
+    kernel_initialiser = tf.keras.initializers.RandomUniform(minval=-500, maxval=100)
+    kernel_initialiser2 = tf.keras.initializers.RandomUniform(minval=0, maxval=0.1)
+    bias_initialiser = tf.keras.initializers.RandomUniform(minval=0, maxval=10)
+    bias_initialiser2 = tf.keras.initializers.RandomUniform(minval=0, maxval=0.01)
+
+    # Create the model
+    input_layer = tf.keras.Input(shape=n_features)
+    layer = tf.keras.layers.Dense(
+        units=761,
+        activation="relu",
+        kernel_initializer=kernel_initialiser,
+        bias_initializer=bias_initialiser,
+        kernel_regularizer=tf.keras.regularizers.l2(0.1),
+        bias_regularizer=tf.keras.regularizers.l2(0.1),
+    )(input_layer)
+    layer = tf.keras.layers.Dense(
+        units=761,
+        activation="relu",
+        kernel_initializer=kernel_initialiser,
+        bias_initializer=bias_initialiser,
+        kernel_regularizer=tf.keras.regularizers.l2(0.1),
+        bias_regularizer=tf.keras.regularizers.l2(0.1),
+    )(layer)
+    output = tf.keras.layers.Dense(
+        units=761,
+        activation="linear",
+        kernel_initializer=kernel_initialiser,
+        bias_initializer=bias_initialiser,
+        kernel_regularizer=tf.keras.regularizers.l2(0.1),
+        bias_regularizer=tf.keras.regularizers.l2(0.1),
+    )(layer)
+
+    # Compile the model
+    model = tf.keras.Model(inputs=input_layer, outputs=output)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+    loss_function = tf.keras.losses.MeanSquaredError()
+
+    model.compile(
+        optimizer=optimizer,
+        loss=loss_function,
+        metrics=["mse", "mae"],
+    )
+
+    # Experiment tracking
+    wandb_config = {"splitting_type": split_type, "target_name": label_type}
+    run.config.update(wandb_config)
+
+    # Fit the model
+    callbacks = [
         WandbCallback(
             monitor="val_loss",
             log_weights=True,
-            training_data=(X_train, y_train),
+            save_model=False,
             validation_data=(X_test, y_test),
-        ),
-    ],
-)
+            input_type="auto",
+            output_type="label",
+        )
+    ]
+    history = model.fit(
+        x=X_train,
+        y=y_train,
+        validation_data=(X_test, y_test),
+        callbacks=callbacks,
+        epochs=epochs,
+        batch_size=batch_size * len(gpus),  # Consider the number of replicas
+    )
+
+    # Save the model to wandb
+    ml.log_model(model)

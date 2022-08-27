@@ -3,10 +3,12 @@ import numpy as np
 import tensorflow as tf
 import wandb
 from molmagic import ml
-from molmagic.config import aggregation as cfg_aggregation
-from molmagic.config import extraction as cfg_extraction
 from molmagic.ml import run_controller
 from wandb.keras import WandbCallback
+
+
+# Vars
+training_artifact = "qm9-light-bw_scott:latest"
 
 # TF setup
 random_seed = 50
@@ -19,7 +21,7 @@ run = wandb.init(
     project="MolecularMagic",
     entity="molecular-magicians",
     name="test",
-    group="test_group",
+    # group="test_group",
     job_type="training",
 )
 run_controller.set_run(run)
@@ -31,7 +33,7 @@ split_type = "random"
 label_type = "free_energy"
 
 # Dataset loading (also inits a wandb run if not done explicitly)
-basepath = ml.get_vector_artifact("qm9-light-bw_scott:latest")
+basepath = ml.get_vector_artifact(training_artifact)
 
 X = np.load(basepath / "features.npy")
 y_raw = np.load(basepath / "labels.npy").astype(np.double)

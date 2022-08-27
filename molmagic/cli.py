@@ -14,27 +14,23 @@ fmt:
 
 Depends on `cclib` and `bz2`.
 """
-from argparse import ArgumentParser, Namespace
-import shutil
-from tarfile import is_tarfile
-import tarfile
-
-import oyaml as yaml
-from tqdm import tqdm
-from molmagic.config import (
-    extraction as cfg_ext,
-    qm9_exclude,
-    plotting as cfg_plot,
-    aggregation as cfg_agg,
-)
-from molmagic import parser
-from molmagic import vectorizer
-from molmagic import ml
-from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic.rules import FilteredMols, global_filters, local_filters
-import numpy as np
-from pathlib import Path
 import sys
+import tarfile
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from tarfile import is_tarfile
+from typing import Iterable
+
+import numpy as np
+import oyaml as yaml
+from openbabel import pybel as pb
+from tqdm import tqdm
+
+from molmagic import ml, parser, vectorizer
+from molmagic.aggregator import autobin_mols, bin_mols
+from molmagic.config import extraction as cfg_ext
+from molmagic.config import qm9_exclude
+from molmagic.rules import FilteredMols, global_filters, local_filters
 
 
 def parse(args: Namespace) -> None:
@@ -79,21 +75,9 @@ def parse(args: Namespace) -> None:
             desc="Applying global filters",
         )
     )
-    if cfg_ext["use-filters"]:
-        molecules = list(
-            tqdm(
-                filter(local_filters, molecules),
-                leave=False,
-                desc="Filtering molecules",
-            )
-        )
-
-        print(f"Filtered {FilteredMols.get_total()} instances:")
-        print(FilteredMols.get_breakdown())
-    else:
-        print(
-            f"Filtered {FilteredMols.disjoint_structure} instances due to non-viable structure."
-        )
+    print(
+        f"Filtered {FilteredMols.disjoint_structure} instances due to non-viable structure."
+    )
 
     # Write the archive out
     n_molecules = parser.write_compressed_sdf(molecules, output_path, n_instances)
@@ -101,11 +85,48 @@ def parse(args: Namespace) -> None:
 
     # Write this archive to a wandb archive (if asked to)
     if args.artifact:
-        ml._log_parser_artifact(args, output_path, n_molecules)
+        ml.log_parser_artifact(args.artifact, output_path, n_molecules)
         output_path.unlink()
 
 
-def _parse_g09_dir(input_path: Path):
+def molecule_filter(args: Namespace) -> None:
+    """Filter an sdf archive"""
+    # Load the input file or artifact
+    if args.input_file:
+        infile = args.input_file
+    else:
+        ml.run_controller.use_run("filter")
+        infile = ml.get_dataset_artifact(args.input_artifact)
+
+    # Read the archive into memory and filter using the local filters
+    molecules = parser.read_sdf_archive(infile)
+    molecules = list(
+        tqdm(
+            filter(local_filters, molecules),
+            leave=False,
+            desc="Filtering molecules",
+        )
+    )
+    print(f"Filtered {FilteredMols.get_total()} instances:")
+    print(FilteredMols.get_breakdown())
+    n_molecules = len(molecules)
+
+    # Output a file to either destination or tmpdir
+    if args.output_file:
+        output_path = args.output_path
+    else:
+        output_path = Path("/tmp/archive.sdf.bz2")
+    parser.write_compressed_sdf(molecules, output_path, n_molecules)
+
+    # Save artifact if asked
+    if args.output_artifact:
+        ml.log_parser_artifact(args.output_artifact, output_path, n_molecules)
+        # Delete tempoary archive if asked
+        if not args.output_file:
+            output_path.unlink()
+
+
+def _parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
     # Walk the basepath directory and discover all the
     # g09 formatted output files
     matched_paths = list(input_path.glob("./**/*f.out"))
@@ -133,7 +154,7 @@ def vectorize(args: Namespace) -> None:
     # If no archive is specified load an artifact
     if args.load:
         ml.run_controller.use_run("vectorizer")
-        input_path = ml._get_parser_artifact(args)
+        input_path = ml.get_dataset_artifact(args.load)
     else:
         input_path = args.input
 
@@ -267,6 +288,26 @@ def main(argv=sys.argv):
     )
     parser.set_defaults(func=parse)
 
+    # Create a filter option
+    filterer = subparsers.add_parser(
+        name="filter",
+        description="Filters out instances based on the rules in config.yml",
+    )
+    filter_input_group = filterer.add_mutually_exclusive_group()
+    filter_input_group.add_argument(
+        "-i", "--input-file", type=Path, help="The input sdf file location"
+    )
+    filter_input_group.add_argument(
+        "-l", "--input-artifact", type=str, help="The input artifact name"
+    )
+    filterer.add_argument(
+        "-o", "--output-file", type=Path, help="The output file destiation."
+    )
+    filterer.add_argument(
+        "-a", "--output-artifact", type=str, help="The output artifact name."
+    )
+    filterer.set_defaults(func=molecule_filter)
+
     # Create a vectorizer option
     vectorizer = subparsers.add_parser(
         name="vectorizer",
@@ -284,7 +325,6 @@ def main(argv=sys.argv):
     vectorizer_input.add_argument(
         "-l", "--load", type=str, help="""Name of the artifact to load from WandB"""
     )
-    # TODO: #79 Delineate local and wandb metadata
     vectorizer_metadata = vectorizer.add_mutually_exclusive_group()
     vectorizer_metadata.add_argument(
         "-m",
