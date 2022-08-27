@@ -1,6 +1,6 @@
 project: MolecularMagic
 name: little_sweep
-program: "sweep_model.py"
+program: "model_training/sweep_model.py"
 method: random
 metric:
   goal: minimize
