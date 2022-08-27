@@ -1,31 +1,131 @@
+import shutil
+from collections import defaultdict
 from pathlib import Path
 from typing import Callable
-import wandb
-from collections import defaultdict
+
 import numpy as np
-from sklearn.model_selection import train_test_split
 import tensorflow as tf
-import shutil
-import numpy as np
+import wandb
+from sklearn.model_selection import train_test_split
+
+from molmagic.config import aggregation as cfg_agg, plotting as cfg_plot
+from molmagic.rules import FilteredMols
 
 
-run = wandb.init(
-    project="MolecularMagic",
-    entity="molecular-magicians",
-)
+class WandBRun:
+    def __init__(self) -> None:
+        self.run = None
+
+    def use_run(self, job_type: str = None):
+        """Instantiate or return a wandb run instance"""
+        if not self.run:
+            self.run = wandb.init(
+                project="MolecularMagic",
+                entity="molecular-magicians",
+                job_type=job_type,
+            )
+        return self.run
+
+    def set_run(self, run):
+        self.run = run
 
 
-def get_artifact(name: str):
-    """Download an artifact by name"""
-    artifact = run.use_artifact(name, type="vectors")
-    download_path = Path("/tmp/")
-    artifact.download(download_path)
+run_controller = WandBRun()
 
-    return download_path
+
+def get_model_artifact(name: str) -> tf.keras.Model:
+    """Download a model by name"""
+    artifact = run_controller.use_run().use_artifact(name, type="model")
+    model_path = Path(artifact.download())
+    model = tf.keras.models.load_model(model_path / "model")
+    shutil.rmtree(model_path)
+    return model
+
+
+def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
+    """Get the dataset version which generated a vector dataset"""
+    api = wandb.Api()
+    artifact = api.artifact(project + "/" + name)
+
+    producer_run = artifact.logged_by()
+    consumed_artifcacts = producer_run.used_artifacts()
+    consumed_datasets = [i for i in consumed_artifcacts if i.type == "dataset"]
+    assert len(consumed_datasets) == 1
+
+    producer_dataset = consumed_datasets[0]
+    return Path(producer_dataset.download())
+
+
+def get_vector_artifact(name: str) -> Path:
+    """Download a vector dataset by name"""
+    artifact = run_controller.use_run().use_artifact(name, type="vectors")
+    download_path = artifact.download()
+
+    return Path(download_path)
+
+
+def get_dataset_artifact(name: str) -> Path:
+    run = run_controller.use_run(job_type="vectorizer")
+    artifact = run.use_artifact(name, type="dataset")
+    download_path = artifact.download()
+    return Path(download_path) / "archive.sdf.bz2"
+
+
+def log_parser_artifact(artifact_name: str, output_path: Path, n_molecules: int) -> None:
+    """Save a parsed output file"""
+    run = run_controller.use_run(job_type="parser")
+    artifact = wandb.Artifact(artifact_name, type="dataset")
+    artifact.add_file(output_path, name="archive.sdf.bz2")
+
+    # Save metadata
+    artifact.metadata.update(cfg_agg)
+    artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
+    artifact.metadata.update({"num_mols": n_molecules})
+
+    # Upload and delete the archive
+    run.log_artifact(artifact)
+
+
+def _log_vector_artifact(
+    args,
+    feature_vector,
+    features_output,
+    labels_output,
+    identities_output,
+    metadata_output,
+):
+    """Save generated vectors, metadata and histograms"""
+    run = run_controller.use_run(job_type="vectorizer")
+    artifact = wandb.Artifact(
+        name=args.artifact,
+        type="vectors",
+        description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
+    )
+    # Upload the files
+    artifact.add_file(features_output, name="features.npy")
+    artifact.add_file(labels_output, name="labels.npy")
+    artifact.add_file(identities_output, name="identities.npy")
+    artifact.add_file(metadata_output, name="metadata.yml")
+
+    # Save metadata
+    artifact.metadata.update(cfg_agg)
+    artifact.metadata.update(
+        {
+            "n_instances": feature_vector.shape[0],
+            "n_features": feature_vector.shape[1],
+        }
+    )
+
+    # Check if we need to log figures
+    if args.plot_histograms:
+        artifact.add_dir(cfg_plot["save-dir"])
+
+    run.log_artifact(artifact)
 
 
 def log_model(model: tf.keras.Model) -> None:
     """Save a model to weights and baises as an artifact"""
+    run = run_controller.use_run(job_type="training")
     output_path = Path("tmp/") / run.name
     model.save(output_path)
 
@@ -39,9 +139,9 @@ def log_model(model: tf.keras.Model) -> None:
 
 
 def get_label_type(arr: np.ndarray, label_type: str) -> np.ndarray:
-    if label_type == 'electronic_energy':
+    if label_type == "electronic_energy":
         return arr[:, 0]
-    elif label_type == 'free_energy':
+    elif label_type == "free_energy":
         return arr[:, 1]
 
 

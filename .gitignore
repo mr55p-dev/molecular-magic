@@ -159,3 +159,6 @@ autoband_badh_freeeng/
 # Figures
 figures/
 *.swp
+
+# wandb
+artifacts/
