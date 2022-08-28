@@ -19,21 +19,11 @@ class FilteredMols:
     tetravalent_nitrogen = 0
     carbanion = 0
     disjoint_structure = 0
+    total_local = 0
 
     @staticmethod
     def get_total():
-        return sum(
-            [
-                FilteredMols.other_atom,
-                FilteredMols.heavy_atom,
-                FilteredMols.zero_free_energy,
-                FilteredMols.long_bond,
-                FilteredMols.strained_angle,
-                FilteredMols.tetravalent_nitrogen,
-                FilteredMols.carbanion,
-                FilteredMols.disjoint_structure,
-            ]
-        )
+        return FilteredMols.total_local
 
     @staticmethod
     def get_breakdown():
@@ -141,10 +131,12 @@ def local_filters(molecule: pb.Molecule) -> bool:
         if testangle > anglelimit4 and central_type[0] == "C" and central_val == 4:
             FilteredMols.strained_angle += 1
             allow = False
+            break
 
         if testangle > anglelimit2 and central_type[0] == "C" and central_val == 2:
             FilteredMols.strained_angle += 1
             allow = False
+            break
 
     # Remove tetravalent nitrogen atoms (check usage of GetTotalValence)
     if any(
@@ -169,5 +161,8 @@ def local_filters(molecule: pb.Molecule) -> bool:
         if all(i in carbanion_checklist for i in atom_types):
             FilteredMols.carbanion += 1
             allow = False
+            break
 
+    if not allow:
+        FilteredMols.total_local += 1
     return allow
