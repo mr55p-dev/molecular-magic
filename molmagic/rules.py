@@ -1,6 +1,5 @@
 """Implementions of filtering rules used by the parser"""
 
-from logging import Filter
 from openbabel import pybel as pb, openbabel as ob
 from molmagic.config import extraction as cfg, aggregation as cfg_agg
 
@@ -80,11 +79,12 @@ def local_filters(molecule: pb.Molecule) -> bool:
     in the sdf file and then a second script to read those sdfs and their
     properties"""
     mol = molecule.OBMol
+    allow = True
 
     # Remove atoms other than HCNO
     if any(i.atomicnum not in cfg_agg["atom-types"] for i in molecule.atoms):
         FilteredMols.other_atom += 1
-        return False
+        allow = False
 
     # Filter out molecules of the wrong size
     min_heavy_atoms = cfg["min-heavy-atoms"]
@@ -95,12 +95,12 @@ def local_filters(molecule: pb.Molecule) -> bool:
         <= max_heavy_atoms
     ):
         FilteredMols.heavy_atom += 1
-        return False
+        allow = False
 
     # Filter free energy == 0
     if not float(molecule.data["free_energy"]):
         FilteredMols.zero_free_energy += 1
-        return False
+        allow = False
 
     # Filter bonds which are not in the limit range
     bond_min_range = cfg["bond-min-distance"]
@@ -110,7 +110,7 @@ def local_filters(molecule: pb.Molecule) -> bool:
         for i in ob.OBMolBondIter(mol)
     ):
         FilteredMols.long_bond += 1
-        return False
+        allow = False
 
     # Filter angles which are classed as strained (check implementation)
     atomanglesum = dict()
@@ -140,11 +140,11 @@ def local_filters(molecule: pb.Molecule) -> bool:
 
         if testangle > anglelimit4 and central_type[0] == "C" and central_val == 4:
             FilteredMols.strained_angle += 1
-            return False
+            allow = False
 
         if testangle > anglelimit2 and central_type[0] == "C" and central_val == 2:
             FilteredMols.strained_angle += 1
-            return False
+            allow = False
 
     # Remove tetravalent nitrogen atoms (check usage of GetTotalValence)
     if any(
@@ -152,7 +152,7 @@ def local_filters(molecule: pb.Molecule) -> bool:
         for i in filter(lambda x: x.atomicnum == 7, molecule.atoms)
     ):
         FilteredMols.tetravalent_nitrogen += 1
-        return False
+        allow = False
 
     # Remove carbanions
     for atom in ob.OBMolAtomIter(mol):
@@ -168,6 +168,6 @@ def local_filters(molecule: pb.Molecule) -> bool:
 
         if all(i in carbanion_checklist for i in atom_types):
             FilteredMols.carbanion += 1
-            return False
+            allow = False
 
-    return True
+    return allow
