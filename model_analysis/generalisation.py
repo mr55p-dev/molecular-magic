@@ -36,7 +36,7 @@ idx_eval = np.load(evaluation_path / "identities.npy").reshape(-1, 1)
 dataset_path = get_vector_parent(eval_vectors_name)
 mols = read_sdf_archive(dataset_path / "archive.sdf.bz2")
 
-# %%Run inference
+# %% Run inference
 y_pred = model.predict(X_eval)
 y_err = np.abs(y_pred.reshape(-1, 1) - y_eval)
 mae = y_err.mean()

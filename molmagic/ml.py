@@ -1,4 +1,5 @@
 import shutil
+import pickle
 from collections import defaultdict
 from pathlib import Path
 from typing import Callable
@@ -86,7 +87,7 @@ def log_parser_artifact(artifact_name: str, output_path: Path, n_molecules: int)
     run.log_artifact(artifact)
 
 
-def _log_vector_artifact(
+def log_vector_artifact(
     args,
     feature_vector,
     features_output,
@@ -126,8 +127,14 @@ def _log_vector_artifact(
 def log_model(model: tf.keras.Model) -> None:
     """Save a model to weights and baises as an artifact"""
     run = run_controller.use_run(job_type="training")
-    output_path = Path("tmp/") / run.name
-    model.save(output_path)
+    output_path = Path("/tmp/") / run.name
+    if hasattr(model, 'save'):
+        model.save(output_path)
+    else:
+        out_file = output_path / "model"
+        out_file.parent.mkdir()
+        with out_file.open('wb') as f:
+            f.write(pickle.dumps(model))
 
     artifact = wandb.Artifact(run.name, type="model")
     artifact.add_dir(output_path, name="model")

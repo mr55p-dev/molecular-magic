@@ -227,7 +227,7 @@ def vectorize(args: Namespace) -> None:
 
     # Create an artifact if we are asked to do so
     if args.artifact:
-        ml._log_vector_artifact(
+        ml.log_vector_artifact(
             args,
             feature_vector,
             features_output,
