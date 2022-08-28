@@ -1,23 +1,40 @@
-from distutils.log import Log
+from sklearn.linear_model import RidgeCV
 import numpy as np
 from sklearn.metrics import mean_absolute_error
-from molmagic.split import stoichiometric_split
-# from sklearn.model_selection import train_test_split
+from molmagic import ml
 
+# Configuration
+training_data_artifact = "qm9-std_scott:latest"
+label_name = "electronic_energy"
+splitting_type = "random"
 random_seed = 50
 
-# We are focusing on the prediction of free energy (this is the target)
-X = np.load("/home/luke/code/molecular-magic/mole8rep/features.npy")
-y = np.load("/home/luke/code/molecular-magic/mole8rep/labels.npy").astype(np.double)
+# Load data
+data_basepath = ml.get_vector_artifact(training_data_artifact)
+X = np.load(data_basepath / "features.npy")
+y_raw = np.load(data_basepath / "labels.npy").astype(np.double)
+y = ml.get_label_type(y_raw, label_name)
 
-X_train, X_test, y_train, y_test = stoichiometric_split(
-    X, y, random_state=random_seed)
+# Split training and testing data
+splitter = ml.get_split(splitting_type)
+X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
 
-from sklearn.linear_model import RidgeCV
-
+# Fit a model
 reg = RidgeCV()
 reg.fit(X_train, y_train)
 y_pred = reg.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
 
-print(mae) # MAE 14
+# Save the results
+run = ml.run_controller.use_run()
+run.config.update({
+    "target_name": label_name,
+    "splitting_type": splitting_type,
+    "algorithm": "RidgeCV"
+})
+run.log({
+    "mean_absolute_error": mae,
+})
+ml.log_model(reg)
+
+print(mae)
