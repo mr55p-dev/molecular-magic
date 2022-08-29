@@ -245,7 +245,10 @@ def _assign_feature_bins(
     for bin_key, bin_values in tqdm(
         type_bins.items(), leave=False, desc="Assigning bins"
     ):
-        f = partial(_assign_type_bins, bins=bin_values)
+        if "weighted-bins" in cfg and cfg["weighted-bins"]:
+            f = partial(_assign_type_bins_weighted, bins=bin_values)
+        else:
+            f = partial(_assign_type_bins, bins=bin_values)
         vecs = map(f, (i[bin_key] for i in feature_data))
 
         # Append this columns data (which is a N x (M+1) vector)
@@ -348,13 +351,61 @@ def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # Using bins sorted low to high and right=False,
     # the criterion is bins[i-1] <= x < bins[i]
     binned = np.digitize(data, bins)
-    vec = np.zeros((len(bins) + 1,))
+    vec = np.zeros((len(bins)))
 
     # This is slow find a better way
     for bin_idx in binned:
         vec[bin_idx] += 1
 
     # TO-DO: This may be able to be improved using counter or list comprehension
+
+    return vec
+
+
+def _assign_type_bins_weighted(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
+    """Assign each value to a bin and return a vector where each item
+    corresponds to the number of occurences of items falling into bin n.
+    This variant is weighted such that if a value falls between two others
+    in the list, the value of the vector is equal to the normalized absolute
+    difference between the value of the instance and the value of the bin.
+
+    eg: given a set of data [0, 20, 40] and bins [10, 30], the resultant vector
+    would be [1, 0.5, 1]. Note that if there are multiple values assigned
+    to the same bin then the weights for that value are summed, eg for the same bins
+    but data [0, 20, 20, 20, 40] we would get the vector [1, 1.5, 1].
+
+    Note the returned matrix is of shape len(bins) + 1, as there will be
+    n+1 bins defined by n boundaries (additional bins below and above the
+    specified ones are valid"""
+    # Using bins sorted low to high and right=False,
+    # the criterion is bins[i-1] <= x < bins[i]
+    vec = np.zeros((len(bins),))
+
+    # Iterate over each value in the data
+    for instance in data:
+
+        # Handle np.inf bins
+        if len(bins) == 2 and (np.asarray(bins) == np.array([-np.inf, np.inf])).all():
+            vec[1] += 1
+            continue
+
+        # Compute the index which the value should be inserted at to
+        # maintain order (this will be the value on the right hand side)
+        # of instance in the list
+        upper_idx = np.searchsorted(bins, instance, side="left")
+        # If the upper index is the start of the list then we can just increment the start
+        if upper_idx == 0:
+            vec[0] += 1
+        # If the upper index is past the end of the list then we increment the end
+        elif upper_idx == len(bins):
+            vec[-1] += 1
+        else:
+            # The lower index will be just one behind the upper
+            lower_idx = upper_idx - 1
+            vec[upper_idx] += (instance - bins[lower_idx]) / (
+                bins[upper_idx] - bins[lower_idx]
+            )
+            vec[lower_idx] += 1 - vec[upper_idx]
 
     return vec
 
