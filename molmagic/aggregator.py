@@ -351,7 +351,7 @@ def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # Using bins sorted low to high and right=False,
     # the criterion is bins[i-1] <= x < bins[i]
     binned = np.digitize(data, bins)
-    vec = np.zeros((len(bins)))
+    vec = np.zeros((len(bins) + 1,))
 
     # This is slow find a better way
     for bin_idx in binned:
@@ -379,35 +379,60 @@ def _assign_type_bins_weighted(data: np.ndarray, bins: np.ndarray) -> np.ndarray
     specified ones are valid"""
     # Using bins sorted low to high and right=False,
     # the criterion is bins[i-1] <= x < bins[i]
-    vec = np.zeros((len(bins),))
 
-    # Iterate over each value in the data
-    for instance in data:
+    # Not implemented due to some confusion around exactly how this should work
+    raise NotImplementedError("Weighted features is not currently implemented.")
+    # vec = np.zeros((len(bins) + 1,))
+    # assignment = np.digitize(data, bins)
 
-        # Handle np.inf bins
-        if len(bins) == 2 and (np.asarray(bins) == np.array([-np.inf, np.inf])).all():
-            vec[1] += 1
-            continue
+    # # Compute the bin means:
+    # if len(bins) >= 3:
+    #     ...
+    # else:
+    #     # Normal vectorization
 
-        # Compute the index which the value should be inserted at to
-        # maintain order (this will be the value on the right hand side)
-        # of instance in the list
-        upper_idx = np.searchsorted(bins, instance, side="left")
-        # If the upper index is the start of the list then we can just increment the start
-        if upper_idx == 0:
-            vec[0] += 1
-        # If the upper index is past the end of the list then we increment the end
-        elif upper_idx == len(bins):
-            vec[-1] += 1
-        else:
-            # The lower index will be just one behind the upper
-            lower_idx = upper_idx - 1
-            vec[upper_idx] += (instance - bins[lower_idx]) / (
-                bins[upper_idx] - bins[lower_idx]
-            )
-            vec[lower_idx] += 1 - vec[upper_idx]
+    # for instance, bin in zip(data, assignment):
+    #     if bin == 0 or bin == len(bins):
+    #         vec[bin] += 1
+    #     else:
+    #         """
+    #         NEED TO FIGURE OUT WHATS GOING ON WITH THESE BINS
+    #         SEE IPAD NOTESw
+    #         """
+    #         bin_centers = _get_bin_centers(bins[])
+    #         bin_center = (
+    #             np.mean(bins[bin - 1 : bin + 1])
+    #             if instance < bins[bin]
+    #             else np.mean(bins[bin : bin + 2])
+    #         )
 
-    return vec
+    # # Handle np.inf bins
+    # if len(bins) == 2 and (np.asarray(bins) == np.array([-np.inf, np.inf])).all():
+    #     return np.ones(1) * len(data)
+
+    # vec = np.zeros((len(bins),))
+    # # Iterate over each value in the data
+    # for instance in data:
+
+    #     # Compute the index which the value should be inserted at to
+    #     # maintain order (this will be the value on the right hand side)
+    #     # of instance in the list
+    #     upper_idx = np.searchsorted(bins, instance, side="left")
+    #     # If the upper index is the start of the list then we can just increment the start
+    #     if upper_idx == 0:
+    #         vec[0] += 1
+    #     # If the upper index is past the end of the list then we increment the end
+    #     elif upper_idx == len(bins):
+    #         vec[-1] += 1
+    #     else:
+    #         # The lower index will be just one behind the upper
+    #         lower_idx = upper_idx - 1
+    #         vec[upper_idx] += (instance - bins[lower_idx]) / (
+    #             bins[upper_idx] - bins[lower_idx]
+    #         )
+    #         vec[lower_idx] += 1 - vec[upper_idx]
+
+    # return vec
 
 
 def _get_feature_data(mols: list[MoleculeData], feature: str) -> list[Any]:

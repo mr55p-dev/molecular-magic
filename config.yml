@@ -19,7 +19,7 @@ aggregation:
   resolution: 10000
   bandwidth: 0.07  # scott, sliverman, float or none
   use-minmax: true
-  weighted-bins: true
+  weighted-bins: false
 
   # Feature creation config
   atom-types:
