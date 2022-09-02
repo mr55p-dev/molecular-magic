@@ -1,19 +1,27 @@
 extraction:
+  # Filter configuration
   output-format: "sdf"
-  hbond-min-distance: 1.6
-  hbond-max-distance: 2.5
-  exclude-imines: false
+  bond-min-distance: 0
+  bond-max-distance: 1.6
+  min-heavy-atoms: 9
+  max-heavy-atoms: 12
+
+  # Configuration when extracting mol info
   hbond-atoms:
    - 7
    - 8
+  hbond-min-distance: 1.6
+  hbond-max-distance: 2.5
   substructures:  # List of SMARTS strings to search the structure for
-    # - "c"  # aromatic carbon
+
 aggregation:
+  # Histogram creation configuration
   resolution: 10000
   bandwidth: 0.07  # scott, sliverman, float or none
-  use-minmax: false
-  # Can be scf_energy, free_energy, net_charge
-  label-name: "free_energy"
+  use-minmax: true
+  weighted-bins: false
+
+  # Feature creation config
   atom-types:
     - 1
     - 6
@@ -28,8 +36,9 @@ aggregation:
     - "angles"
     - "dihedrals"
     - "hbonds"
+
 plotting:
-  save-dir: "./figures/fixed-0.07-minmax"
+  save-dir: "./data/qm9/figures/bw0.07unfiltered"
   show-dist: true
   show-kde: true
   plot-style: "whitegrid"

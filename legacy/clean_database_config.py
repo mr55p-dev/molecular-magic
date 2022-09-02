@@ -3,9 +3,9 @@
 from pathlib import Path
 
 
-data_basepath = Path("./static_data/")
-molecule_list_path = "GDB_allgroundnoimagnocarban_Dec2021_G298_LongBondLimit1.6.pkl"
-output_basepath = data_basepath / "clean_database_output"
+data_basepath = Path("./data/")
+molecule_list_path = data_basepath / "MolE8_original.pkl"
+output_basepath = data_basepath / "MolE8_original_cleaned.pkl"
 
 MaxAtoms = 8
 scaling_factor = 627.50960803 # Hartree to kcal/mol

@@ -1,0 +1,28 @@
+project: MolecularMagic
+name: little_sweep
+program: "model_training/sweep_model.py"
+method: random
+metric:
+  goal: minimize
+  name: val_loss
+parameters:
+  l1_size:
+    values: [64, 256, 512, 1024]
+  l2_size:
+    values: [64, 256, 512, 1024]
+  epochs:
+    value: 7500
+  batch_size:
+    values: [64, 256, 1024]
+  activation:
+    values:
+      - relu
+      - elu
+      - sigmoid
+      - tanh
+  train-test-splitter:
+    values: [random, stoichiometric]
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}

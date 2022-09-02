@@ -4,15 +4,18 @@ SDF file.
 
 Requires cclib and bz2 to be installed
 """
+from os import PathLike
 from pathlib import Path
 from typing import Iterable
 import openbabel.pybel as pb
 import cclib
 import bz2
-from molmagic.rules import filter_mols
+from molmagic.config import extraction as cfg
+import tarfile
+from tqdm import tqdm
 
 
-def parse_files(paths: list[Path]) -> Iterable[str]:
+def parse_files(paths: list[Path]) -> Iterable[pb.Molecule]:
     """Iterate over a sequence of dft file paths
     and return each one parsed in the order given"""
 
@@ -20,10 +23,47 @@ def parse_files(paths: list[Path]) -> Iterable[str]:
     indices = range(len(paths))
     mol = map(read_dft_frequency, paths, indices)
 
-    # Filter this list to remove any bad objects
-    mol_subset = filter(filter_mols, mol)
+    return mol
 
-    return mol_subset
+
+def parse_tar_archive(
+    tarball: PathLike, format: str, exclude: list[int] = None
+) -> Iterable[pb.Molecule]:
+    """Open a tar archive molecules and return an iterator over pybel
+    molecules"""
+    if format != "xyz":
+        raise NotImplementedError(
+            f"{format} not yet implemented for parsing a tar archive."
+        )
+    # Get files in tarball
+    with tarfile.open(tarball) as tar:
+        for member in tar.getmembers():
+            # Extract the file
+            file = tar.extractfile(member)
+            contents = file.read()
+
+            # Extract props
+            props = contents.splitlines()[1]
+            fields = props.split(b"\t")
+
+            # Get the file index
+            identity = int(fields[0].split(b" ")[1])  # ID specified by QM9
+            if exclude and (identity in exclude):
+                continue
+
+            # Construct openbabel
+            mol = pb.readstring(format="xyz", string=contents.decode("utf-8"))
+
+            # Calculate the label properties
+            scf_energy = float(fields[12]) * 627.503  # U @ 298K (kcal/mol)
+            free_energy = float(fields[14]) * 627.503  # G @ 298K (kcal/mol)
+
+            # Save this to the molecule
+            mol.data.update(
+                {"id": identity, "scf_energy": scf_energy, "free_energy": free_energy}
+            )
+
+            yield mol
 
 
 def check_convergence(path: Path) -> bool:
@@ -105,3 +145,30 @@ def read_sdf_archive(archive_path: Path) -> Iterable[pb.Molecule]:
 
                 # Construct an pb.Molecule
                 yield pb.readstring(format="sdf", string=sdf_string)
+
+
+def write_compressed_sdf(
+    mol_subset: list[pb.Molecule], outpath: PathLike, n_instances: int = None
+) -> int:
+    # Create a compression object
+    compressor = bz2.BZ2Compressor()
+
+    # Write appropriate objects into outpath under the same filename
+    n_mols = 0
+    with outpath.open("wb") as buffer:
+        # Iterate the molecules
+        for mol in tqdm(mol_subset, total=n_instances if n_instances else None, leave=False):
+            # Pybel returns a string if no output file is provided
+            raw_output: str = mol.write(format=cfg["output-format"])
+            # Encode the string to utf8 bytes
+            bytes_output = raw_output.encode("utf-8")
+            # Compress those bytes
+            compressed_output = compressor.compress(bytes_output)
+            # Stream them into the output file
+            buffer.write(compressed_output)
+            # Increment the counter
+            n_mols += 1
+
+        # Make sure nothing gets left behind in the compressor
+        buffer.write(compressor.flush())
+    return n_mols

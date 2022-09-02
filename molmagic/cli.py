@@ -14,18 +14,23 @@ fmt:
 
 Depends on `cclib` and `bz2`.
 """
-from argparse import ArgumentParser, Namespace
-import bz2
-
-import oyaml as yaml
-from tqdm import tqdm
-from molmagic import parser
-from molmagic import vectorizer
-from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic import config
-import numpy as np
-from pathlib import Path
 import sys
+import tarfile
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from tarfile import is_tarfile
+from typing import Iterable
+
+import numpy as np
+import oyaml as yaml
+from openbabel import pybel as pb
+from tqdm import tqdm
+
+from molmagic import ml, parser, vectorizer
+from molmagic.aggregator import autobin_mols, bin_mols
+from molmagic.config import extraction as cfg_ext
+from molmagic.config import qm9_exclude
+from molmagic.rules import FilteredMols, global_filters, local_filters
 
 
 def parse(args: Namespace) -> None:
@@ -43,53 +48,118 @@ def parse(args: Namespace) -> None:
         Directory to write all the output files to
     """
 
-    basepath = args.input
-    outpath = args.output
+    input_path: Path = args.input
+    output_path: Path = args.output
 
-    # Walk the basepath directory and discover all the
-    # g09 formatted output files
-    # TODO: #70 use shell globbing and take a list of paths as args.input
-    matched_paths = list(basepath.glob("./**/*f.out"))
+    # Check the path exists
+    if not input_path.exists():
+        print(f"{input_path} does not exist.")
 
-    mol_subset = parser.parse_files(matched_paths)
-
-    # If we are not given a file, write this to stdout **uncompressed**
-    if not outpath:
-        for mol in mol_subset:
-            sys.stdout.write(mol.write(format=config.extraction["output-format"]))
-        return 0
+    # Detect if this is a tar archive to extract
+    if input_path.is_file():
+        molecules, n_instances = _parse_tar_dir(input_path)
+    # Detect if this is a directory
+    elif input_path.is_dir():
+        molecules, n_instances = _parse_g09_dir(input_path)
+    else:
+        raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
     # Check the ouptut directory exists, and create if it does not
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    if not outpath.name.endswith(".sdf.bz2"):
-        outpath = outpath.with_suffix(".sdf.bz2")
+    output_path = Path(output_path or "/tmp/archive.sdf.bz2")
 
-    # Create a compression object
-    compressor = bz2.BZ2Compressor()
+    # Filter
+    molecules = list(
+        tqdm(
+            filter(global_filters, molecules),
+            leave=False,
+            desc="Applying global filters",
+        )
+    )
+    print(
+        f"Filtered {FilteredMols.disjoint_structure} instances due to non-viable structure."
+    )
 
-    # Write appropriate objects into outpath under the same filename
-    with outpath.open("wb") as buffer:
-        # Iterate the molecules
-        for mol in tqdm(mol_subset, total=len(matched_paths)):
-            # Pybel returns a string if no output file is provided
-            raw_output: str = mol.write(format=config.extraction["output-format"])
-            # Encode the string to utf8 bytes
-            bytes_output = raw_output.encode("utf-8")
-            # Compress those bytes
-            compressed_output = compressor.compress(bytes_output)
-            # Stream them into the output file
-            buffer.write(compressed_output)
+    # Write the archive out
+    n_molecules = parser.write_compressed_sdf(molecules, output_path, n_instances)
+    print(f"Written {n_molecules} instances out to {output_path}")
 
-        # Make sure nothing gets left behind in the compressor
-        buffer.write(compressor.flush())
+    # Write this archive to a wandb archive (if asked to)
+    if args.artifact:
+        ml.log_parser_artifact(args.artifact, output_path, n_molecules)
+        output_path.unlink()
+
+
+def molecule_filter(args: Namespace) -> None:
+    """Filter an sdf archive"""
+    # Load the input file or artifact
+    if args.input_file:
+        infile = args.input_file
+    else:
+        ml.run_controller.use_run("filter")
+        infile = ml.get_dataset_artifact(args.input_artifact)
+
+    # Read the archive into memory and filter using the local filters
+    molecules = parser.read_sdf_archive(infile)
+    molecules = list(
+        tqdm(
+            filter(local_filters, molecules),
+            leave=False,
+            desc="Filtering molecules",
+        )
+    )
+    print(f"Filtered {FilteredMols.get_total()} instances:")
+    print(FilteredMols.get_breakdown())
+    n_molecules = len(molecules)
+
+    # Output a file to either destination or tmpdir
+    if args.output_file:
+        output_path = args.output_path
+    else:
+        output_path = Path("/tmp/archive.sdf.bz2")
+    parser.write_compressed_sdf(molecules, output_path, n_molecules)
+
+    # Save artifact if asked
+    if args.output_artifact:
+        ml.log_parser_artifact(args.output_artifact, output_path, n_molecules)
+        # Delete tempoary archive if asked
+        if not args.output_file:
+            output_path.unlink()
+
+
+def _parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
+    # Walk the basepath directory and discover all the
+    # g09 formatted output files
+    matched_paths = list(input_path.glob("./**/*f.out"))
+    molecules = parser.parse_files(matched_paths)
+    n_instances = len(matched_paths)
+    return molecules, n_instances
+
+
+def _parse_tar_dir(input_path: Path):
+    # Check the file is readable
+    if not is_tarfile(input_path):
+        raise tarfile.ReadError("Tarfile is not readable")
+    # Autodetect the internal format from the filename
+    fmt = input_path.name.split(".")[-2]
+    # Get the number of entries in the archive
+    with tarfile.open(input_path) as archive:
+        n_instances = sum(1 for member in archive if member.isreg())
+    return parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
 def vectorize(args: Namespace) -> None:
     """Computes a vector representation of a file of molecules, based on a previous
     configuration setup by <aggregate>
     """
+    # If no archive is specified load an artifact
+    if args.load:
+        ml.run_controller.use_run("vectorizer")
+        input_path = ml.get_dataset_artifact(args.load)
+    else:
+        input_path = args.input
+
     # Get our molecule set
-    molecules = parser.read_sdf_archive(args.input)
+    molecules = parser.read_sdf_archive(input_path)
 
     # Extract the molecular properties
     # Note here that the substructure search will return different results if the
@@ -99,12 +169,21 @@ def vectorize(args: Namespace) -> None:
             map(vectorizer.calculate_mol_data, molecules),
             leave=False,
             desc="Extracting molecular properties",
+            total=len(molecules) if isinstance(molecules, list) else None,
         )
     )
 
+    metadata_file = None
     if args.metadata:
+        metadata_file = args.metadata
+    elif args.remote_metadata:
+        # Define the run context
+        run_dir = ml.get_vector_artifact(args.remote_metadata)
+        metadata_file = run_dir / "metadata.yml"
+
+    if metadata_file:
         # Load the original configuration
-        with args.metadata.open("r") as f:
+        with metadata_file.open("r") as f:
             constructor = yaml.load(f, Loader=yaml.CLoader)
         data = constructor["data"]
         loaded_metadata = constructor["metadata"]
@@ -117,28 +196,53 @@ def vectorize(args: Namespace) -> None:
             molecules, args.plot_histograms
         )
 
-    # Exit if we are not saving the output
     print(
         f"Vectorized {feature_vector.shape[0]} instances into {feature_vector.shape[1]} features."
     )
-    if not args.output:
-        return 0
 
     # Get the molecule id's
-    id_vector = np.array([mol.data['id'] for mol in molecules]).astype(np.int32)
+    id_vector = np.array([mol.data["id"] for mol in molecules]).astype(np.int32)
 
     # Check the output path exists
-    args.output.mkdir(exist_ok=True)
+    if not args.output:
+        args.output = Path("/tmp/")
+    else:
+        args.output.mkdir(exist_ok=True)
+
+    # Define the paths
+    features_output = args.output / "features.npy"
+    labels_output = args.output / "labels.npy"
+    identities_output = args.output / "identities.npy"
+    metadata_output = args.output / "metadata.yml"
 
     # Save the files
-    np.save(args.output / "features", feature_vector)
-    np.save(args.output / "labels", target_vector)
-    np.save(args.output / "identities", id_vector)
+    np.save(features_output, feature_vector)
+    np.save(labels_output, target_vector)
+    np.save(identities_output, id_vector)
 
     # If we are not loading metadata it means we have created some
-    if not args.metadata:
-        with (args.output / "metadata.yaml").open("w") as metadata_file:
+    if not (args.metadata or args.remote_metadata):
+        with (metadata_output).open("w") as metadata_file:
             yaml.dump(calculated_metadata, metadata_file)
+
+    # Create an artifact if we are asked to do so
+    if args.artifact:
+        ml.log_vector_artifact(
+            args,
+            feature_vector,
+            features_output,
+            labels_output,
+            identities_output,
+            metadata_output,
+        )
+
+    # Unlink the created files if we are not saving output
+    if not args.output:
+        features_output.unlink()
+        labels_output.unlink()
+        identities_output.unlink()
+        if not args.metadata:
+            metadata_output.unlink()
 
     return 0
 
@@ -176,7 +280,33 @@ def main(argv=sys.argv):
         bz2-compressed archive, which can be recovered using methods
         implemented in magic.parser""",
     )
+    parser.add_argument(
+        "-a",
+        "--artifact",
+        type=str,
+        help="The name of this artifact in weights and biases (default not saved)",
+    )
     parser.set_defaults(func=parse)
+
+    # Create a filter option
+    filterer = subparsers.add_parser(
+        name="filter",
+        description="Filters out instances based on the rules in config.yml",
+    )
+    filter_input_group = filterer.add_mutually_exclusive_group()
+    filter_input_group.add_argument(
+        "-i", "--input-file", type=Path, help="The input sdf file location"
+    )
+    filter_input_group.add_argument(
+        "-l", "--input-artifact", type=str, help="The input artifact name"
+    )
+    filterer.add_argument(
+        "-o", "--output-file", type=Path, help="The output file destiation."
+    )
+    filterer.add_argument(
+        "-a", "--output-artifact", type=str, help="The output artifact name."
+    )
+    filterer.set_defaults(func=molecule_filter)
 
     # Create a vectorizer option
     vectorizer = subparsers.add_parser(
@@ -184,13 +314,19 @@ def main(argv=sys.argv):
         description="""Compute the feature vector
         from a given archive file.""",
     )
-    vectorizer.add_argument(
-        "input",
+    vectorizer_input = vectorizer.add_mutually_exclusive_group(required=True)
+    vectorizer_input.add_argument(
+        "-i",
+        "--input",
         type=Path,
         help="""The bz2 archive of SDF structures annotated by the
         parser utility.""",
     )
-    vectorizer.add_argument(
+    vectorizer_input.add_argument(
+        "-l", "--load", type=str, help="""Name of the artifact to load from WandB"""
+    )
+    vectorizer_metadata = vectorizer.add_mutually_exclusive_group()
+    vectorizer_metadata.add_argument(
         "-m",
         "--metadata",
         required=False,
@@ -198,6 +334,14 @@ def main(argv=sys.argv):
         help="""The metadata which was generated by aggregator when creating
         feature bins in a previous run. If this is not supplied, new bins
         will be computed based on the input file.""",
+    )
+    vectorizer_metadata.add_argument(
+        "-r",
+        "--remote-metadata",
+        required=False,
+        type=str,
+        help="""The name and tag of a wandb run containing a metadata file to
+        use as a vectorizing basis.""",
     )
     vectorizer.add_argument(
         "-o",
@@ -212,6 +356,14 @@ def main(argv=sys.argv):
         "--plot-histograms",
         action="store_true",
         help="""Save histograms for this run""",
+    )
+    vectorizer.add_argument(
+        "-a",
+        "--artifact",
+        required=False,
+        type=str,
+        help="""The name of this artifact in weights and biases (default not saved)""",
+        default=None,
     )
     vectorizer.set_defaults(func=vectorize)
 

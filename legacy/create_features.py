@@ -18,7 +18,6 @@ from create_features_function_defs import (
     BuildOBMol,
     ExtractEnergy,
     ExtractFilename,
-    GenerateFeatures2,
     SelectHBonds,
     GetAtomSymbol,
     FindKDEMax,
@@ -623,15 +622,15 @@ print("angleweight: ", bondweight)
 # Features vector
 
 print("Generating features matrix X for all molecules")
-# X_orig, _ = GenerateFeatures(
-#     OBmol_data,
-#     BondFeaturesDef,
-#     AngleFeaturesDef,
-#     DihedralFeaturesDef,
-#     Max_Atomtypes,
-#     HbondFeaturesDef,
-#     filenames,
-# )
+X, _ = GenerateFeatures(
+    OBmol_data,
+    BondFeaturesDef,
+    AngleFeaturesDef,
+    DihedralFeaturesDef,
+    Max_Atomtypes,
+    HbondFeaturesDef,
+    filenames,
+)
 
 # tmpfile = Path("static_data/tmp/dumped.pkl")
 # with open(tmpfile, "wb") as fi:
@@ -657,33 +656,23 @@ print("Generating features matrix X for all molecules")
 #         filenames,
 #     ) = pickle.loads(fi)
 
-X_new = GenerateFeatures2(
-    OBmol_data,
-    BondFeaturesDef,
-    AngleFeaturesDef,
-    DihedralFeaturesDef,
-    Max_Atomtypes,
-    HbondFeaturesDef,
-    filenames,
-)
 
-
-print(len(X_orig))
-print(X_new.shape)
+# print(len(X_orig))
+# print(X_new.shape)
 # -- Save key vectors
-# data_output_dir = output_basepath / "data"
-# data_output_dir.mkdir(parents=True, exist_ok=True)
+data_output_dir = output_basepath / "data"
+data_output_dir.mkdir(parents=True, exist_ok=True)
 
-# np.save(
-#     data_output_dir / "features.npy",
-#     X,
-#     allow_pickle=True,
-# )
-# np.save(
-#     data_output_dir / "labels.npy",
-#     y,
-#     allow_pickle=True,
-# )
+np.save(
+    data_output_dir / "features.npy",
+    X,
+    allow_pickle=True,
+)
+np.save(
+    data_output_dir / "labels.npy",
+    y,
+    allow_pickle=True,
+)
 
 
 # print("There are " + str(len(X[0])) + " features")
