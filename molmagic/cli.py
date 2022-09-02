@@ -113,17 +113,17 @@ def molecule_filter(args: Namespace) -> None:
 
     # Output a file to either destination or tmpdir
     if args.output_file:
-        output_path = args.output_path
+        output_file = args.output_file
     else:
-        output_path = Path("/tmp/archive.sdf.bz2")
-    parser.write_compressed_sdf(molecules, output_path, n_molecules)
+        output_file = Path("/tmp/archive.sdf.bz2")
+    parser.write_compressed_sdf(molecules, output_file, n_molecules)
 
     # Save artifact if asked
     if args.output_artifact:
-        ml.log_parser_artifact(args.output_artifact, output_path, n_molecules)
+        ml.log_parser_artifact(args.output_artifact, output_file, n_molecules)
         # Delete tempoary archive if asked
         if not args.output_file:
-            output_path.unlink()
+            output_file.unlink()
 
 
 def _parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
