@@ -17,7 +17,8 @@ extraction:
 aggregation:
   # Histogram creation configuration
   resolution: 10000
-  bandwidth: 0.07  # scott, sliverman, float or none
+  bond-bandwidth: 0.07  # scott, sliverman, float or none
+  angle-bandwidth: 0.07  # scott, sliverman, float or none
   use-minmax: true
   weighted-bins: false
 

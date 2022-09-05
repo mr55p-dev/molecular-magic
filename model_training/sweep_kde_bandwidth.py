@@ -28,8 +28,11 @@ run_config.update(
 )
 
 # Collect and set experiment parameters
-bandwidth = run_config["bandwidth"]
-cfg.aggregation["bandwidth"] = bandwidth
+bond_bandwidth = run_config["bond-bandwidth"]
+angle_bandwidth = run_config["angle-bandwidth"]
+cfg.aggregation["bond-bandwidth"] = bond_bandwidth
+cfg.aggregation["angle-bandwidth"] = angle_bandwidth
+
 dataset_base = run_config["dataset_base"]
 dataset_version = run_config["dataset_version"]
 dataset_dir = ml.get_filtered_artifact(f"{dataset_base}:{dataset_version}")

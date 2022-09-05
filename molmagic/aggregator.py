@@ -16,7 +16,6 @@ from molmagic.graphing import draw_and_save_hist
 
 # Get config vars
 resolution = cfg["resolution"]
-bandwidth = cfg["bandwidth"]
 
 TypeBinDict = TypeVar("TypeBinDict", bound=dict[tuple[int], list[float]])
 TypeAggregate = TypeVar("TypeAggregate", bound=dict[tuple[int], list[float]])
@@ -281,6 +280,13 @@ def _get_type_bins(
         bins: ndarray
             The boundaries of the histogram bins
     """
+    # Get the bandwidth for this feature type
+    bond_feature = name[0] in ["bonds", "hbonds"]
+    if "bandwidth" in cfg:
+        bandwidth = cfg["bandwidth"]
+    else:
+        bandwidth = cfg["bond-bandwidth"] if bond_feature else cfg["angle-bandwidth"]
+
     # Calculate the KDE
     kde = gaussian_kde(data, bw_method=bandwidth)
 
@@ -294,7 +300,6 @@ def _get_type_bins(
         upper_bound = data.max()
     else:
         assert name
-        bond_feature = name[0] in ["bonds", "hbonds"]
         lower_bound = 0.8 if bond_feature else 0
         upper_bound = 3.0 if bond_feature else 200
 
