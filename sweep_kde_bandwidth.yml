@@ -1,5 +1,20 @@
+project: MolecularMagic
+name: kde-ridge-sweep
+program: "model_training/sweep_kde_bandwidth.py"
+method: random
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+metric:
+  goal: minimize
+  name: val_mse
 parameters:
-  dataset_base: "qm9-std-HCNOF"
-  dataset_version: "latest"
-  bandwidth:
-    values:
+  dataset_base:
+    value: "qm9-std-HCNOF"
+  dataset_version:
+    value: "latest"
+  bond-bandwidth:
+    values: [0.01, 0.02, 0.04, 0.08, "scott"]
+  angle-bandwidth:
+    values: [0.01, 0.02, 0.04, 0.08, "scott"]
