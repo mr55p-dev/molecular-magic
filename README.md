@@ -129,41 +129,6 @@ Taken from [daylight](https://www.daylight.com/dayhtml_tutorials/languages/smart
 7. Test the model on the testing dataset, generating a set of errors for the mols in the test data
 8. Analyse the error distribution across the train and test sets
 
-
-## Cloud instance setup
-1. Collect your WandB API key
-2. Collect a github personal access token
-3. Provision a google cloud instance either online in the console or via `gcloud compute instances create wandb-compute ` (must setup `gcloud` first)
-4. Log in via SSH with `gcloud compute ssh wandb-compute`
-5. Install conda with
-```
-curl -o script.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-chmod u+x script.sh
-./script.sh
-```
-And follow the prompts
-6. Run `source ~/.bashrc` and conda should be working
-7. Install git with `sudo apt install git` and clone the reop, using the command `git clone https://<username>:<access-token>@github.com/LukeRaw/molecular-magic.git`
-8. Change into the directory with `cd molecular-magic`
-9. Install the conda environment with `conda env create -f environment.yml`
-10. Install the magic module with `pip install -e .`
-11. Reinstall `protobuf` by running `pip uninstall protobuf` and then `conda install protobuf`
-12. Log into weights and biases with `wandb login` and paste your API key when asked
-13. The installation is now complete
-
-<!-- ```
-curl -o script.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-chmod u+x script.sh
-./script.sh
-source ~/.bashrc
-sudo apt install -y git
-git clone https://<username>:<access-token>@github.com/LukeRaw/molecular-magic.git
-conda env create -f environment.yml
-pip install -e .
-pip uninstall protobuf
-conda install -y protobuf
-``` -->
-
 <!-- - Install Git LFS (https://git-lfs.github.com/) and run the following commands in the local git folder:
   - `git lfs install`
   - `git lfs fetch`
