@@ -67,15 +67,34 @@ def get_vector_artifact(name: str) -> Path:
 
 def get_dataset_artifact(name: str) -> Path:
     run = run_controller.use_run(job_type="vectorizer")
-    artifact = run.use_artifact(name, type="dataset")
+    artifact = run.use_artifact(name, type="filtered-dataset")
     download_path = artifact.download()
     return Path(download_path) / "archive.sdf.bz2"
 
 
-def log_parser_artifact(artifact_name: str, output_path: Path, n_molecules: int) -> None:
+def log_parser_artifact(
+    artifact_name: str, output_path: Path, n_molecules: int
+) -> None:
     """Save a parsed output file"""
     run = run_controller.use_run(job_type="parser")
     artifact = wandb.Artifact(artifact_name, type="dataset")
+    artifact.add_file(output_path, name="archive.sdf.bz2")
+
+    # Save metadata
+    artifact.metadata.update(cfg_agg)
+    artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
+    artifact.metadata.update({"num_mols": n_molecules})
+
+    # Upload and delete the archive
+    run.log_artifact(artifact)
+
+
+def log_filter_artifact(
+    artifact_name: str, output_path: Path, n_molecules: int
+) -> None:
+    """Save a filtered output file"""
+    run = run_controller.use_run(job_type="filter")
+    artifact = wandb.Artifact(artifact_name, type="filtered-dataset")
     artifact.add_file(output_path, name="archive.sdf.bz2")
 
     # Save metadata
@@ -128,12 +147,12 @@ def log_model(model: tf.keras.Model) -> None:
     """Save a model to weights and baises as an artifact"""
     run = run_controller.use_run(job_type="training")
     output_path = Path("/tmp/") / run.name
-    if hasattr(model, 'save'):
+    if hasattr(model, "save"):
         model.save(output_path)
     else:
         out_file = output_path / "model"
         out_file.parent.mkdir()
-        with out_file.open('wb') as f:
+        with out_file.open("wb") as f:
             f.write(pickle.dumps(model))
 
     artifact = wandb.Artifact(run.name, type="model")

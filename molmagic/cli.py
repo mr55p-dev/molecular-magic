@@ -122,7 +122,7 @@ def molecule_filter(args: Namespace) -> None:
 
     # Save artifact if asked
     if args.output_artifact:
-        ml.log_parser_artifact(args.output_artifact, output_file, n_molecules)
+        ml.log_filter_artifact(args.output_artifact, output_file, n_molecules)
         # Delete tempoary archive if asked
         if not args.output_file:
             output_file.unlink()
