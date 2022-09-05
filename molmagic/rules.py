@@ -138,6 +138,15 @@ def local_filters(molecule: pb.Molecule) -> bool:
             allow = False
             break
 
+    for value in atomanglesum.values():
+        testangle = 360.0 - sum(value)
+
+        if testangle > anglelimit3A:
+            allow = False
+
+        if any((angle - 120.0) > anglelimit3B for angle in value):
+            allow = False
+
     # Remove tetravalent nitrogen atoms (check usage of GetTotalValence)
     if any(
         i.OBAtom.GetTotalValence() == 4
