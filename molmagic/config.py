@@ -1,4 +1,5 @@
 import oyaml as yaml
+from pathlib import Path
 
 
 with open("config.yml", "r") as f:
@@ -8,6 +9,7 @@ with open("config.yml", "r") as f:
 extraction = configuration["extraction"]
 aggregation = configuration["aggregation"]
 plotting = configuration["plotting"]
+storage_dir = Path("/tmp/")
 qm9_exclude = [
     21725,
     87037,

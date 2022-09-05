@@ -9,7 +9,7 @@ import tensorflow as tf
 import wandb
 from sklearn.model_selection import train_test_split
 
-from molmagic.config import aggregation as cfg_agg, plotting as cfg_plot
+from molmagic.config import aggregation as cfg_agg, plotting as cfg_plot, storage_dir
 from molmagic.rules import FilteredMols
 
 
@@ -37,7 +37,7 @@ run_controller = WandBRun()
 def get_model_artifact(name: str) -> tf.keras.Model:
     """Download a model by name"""
     artifact = run_controller.use_run().use_artifact(name, type="model")
-    model_path = Path(artifact.download())
+    model_path = Path(artifact.download(storage_dir))
     model = tf.keras.models.load_model(model_path / "model")
     shutil.rmtree(model_path)
     return model
@@ -54,13 +54,13 @@ def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
     assert len(consumed_datasets) == 1
 
     producer_dataset = consumed_datasets[0]
-    return Path(producer_dataset.download())
+    return Path(producer_dataset.download(storage_dir))
 
 
 def get_vector_artifact(name: str) -> Path:
     """Download a vector dataset by name"""
     artifact = run_controller.use_run().use_artifact(name, type="vectors")
-    download_path = artifact.download()
+    download_path = artifact.download(storage_dir)
 
     return Path(download_path)
 
@@ -68,14 +68,14 @@ def get_vector_artifact(name: str) -> Path:
 def get_dataset_artifact(name: str) -> Path:
     run = run_controller.use_run(job_type="vectorizer")
     artifact = run.use_artifact(name, type="filtered-dataset")
-    download_path = artifact.download()
+    download_path = artifact.download(storage_dir)
     return Path(download_path) / "archive.sdf.bz2"
 
 
 def get_filtered_artifact(name: str) -> Path:
     run = run_controller.use_run(job_type="filter")
     artifact = run.use_artifact(name, type="filtered-dataset")
-    download_path = artifact.download()
+    download_path = artifact.download(storage_dir)
     return Path(download_path) / "archive.sdf.bz2"
 
 
