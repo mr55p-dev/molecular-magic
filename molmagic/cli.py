@@ -49,7 +49,6 @@ def parse(args: Namespace) -> None:
     """
 
     input_path: Path = args.input
-    output_path: Path = args.output
 
     # Check the path exists
     if not input_path.exists():
@@ -65,7 +64,7 @@ def parse(args: Namespace) -> None:
         raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
     # Check the ouptut directory exists, and create if it does not
-    output_path = Path(output_path or "/tmp/archive.sdf.bz2")
+    output_path = Path(args.output or "/tmp/archive.sdf.bz2")
 
     # Filter
     molecules = list(
@@ -86,6 +85,9 @@ def parse(args: Namespace) -> None:
     # Write this archive to a wandb archive (if asked to)
     if args.artifact:
         ml.log_parser_artifact(args.artifact, output_path, n_molecules)
+
+    # Unlink the file if we are not meant to save it
+    if args.artifact and not args.output:
         output_path.unlink()
 
 
