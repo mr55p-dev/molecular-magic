@@ -29,7 +29,6 @@ from tqdm import tqdm
 from molmagic import ml, parser, vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
 from molmagic.config import extraction as cfg_ext
-from molmagic.config import qm9_exclude
 from molmagic.rules import FilteredMols, global_filters, local_filters
 
 
@@ -56,10 +55,10 @@ def parse(args: Namespace) -> None:
 
     # Detect if this is a tar archive to extract
     if input_path.is_file():
-        molecules, n_instances = _parse_tar_dir(input_path)
+        molecules, n_instances = parser.parse_tar_dir(input_path)
     # Detect if this is a directory
     elif input_path.is_dir():
-        molecules, n_instances = _parse_g09_dir(input_path)
+        molecules, n_instances = parser.parse_g09_dir(input_path)
     else:
         raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
@@ -126,27 +125,6 @@ def molecule_filter(args: Namespace) -> None:
         # Delete tempoary archive if asked
         if not args.output_file:
             output_file.unlink()
-
-
-def _parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
-    # Walk the basepath directory and discover all the
-    # g09 formatted output files
-    matched_paths = list(input_path.glob("./**/*f.out"))
-    molecules = parser.parse_files(matched_paths)
-    n_instances = len(matched_paths)
-    return molecules, n_instances
-
-
-def _parse_tar_dir(input_path: Path):
-    # Check the file is readable
-    if not is_tarfile(input_path):
-        raise tarfile.ReadError("Tarfile is not readable")
-    # Autodetect the internal format from the filename
-    fmt = input_path.name.split(".")[-2]
-    # Get the number of entries in the archive
-    with tarfile.open(input_path) as archive:
-        n_instances = sum(1 for member in archive if member.isreg())
-    return parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
 def vectorize(args: Namespace) -> None:
@@ -230,12 +208,7 @@ def vectorize(args: Namespace) -> None:
     # Create an artifact if we are asked to do so
     if args.artifact:
         ml.log_vector_artifact(
-            args,
-            feature_vector,
-            features_output,
-            labels_output,
-            identities_output,
-            metadata_output,
+            args.artifact, feature_vector, args.output, args.plot_histograms
         )
 
     # Unlink the created files if we are not saving output

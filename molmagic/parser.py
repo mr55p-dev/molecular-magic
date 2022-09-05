@@ -12,6 +12,7 @@ import cclib
 import bz2
 from molmagic.config import extraction as cfg
 import tarfile
+from molmagic.config import qm9_exclude
 from tqdm import tqdm
 
 
@@ -64,6 +65,27 @@ def parse_tar_archive(
             )
 
             yield mol
+
+
+def parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
+    # Walk the basepath directory and discover all the
+    # g09 formatted output files
+    matched_paths = list(input_path.glob("./**/*f.out"))
+    molecules = parse_files(matched_paths)
+    n_instances = len(matched_paths)
+    return molecules, n_instances
+
+
+def parse_tar_dir(input_path: Path):
+    # Check the file is readable
+    if not tarfile.is_tarfile(input_path):
+        raise tarfile.ReadError("Tarfile is not readable")
+    # Autodetect the internal format from the filename
+    fmt = input_path.name.split(".")[-2]
+    # Get the number of entries in the archive
+    with tarfile.open(input_path) as archive:
+        n_instances = sum(1 for member in archive if member.isreg())
+    return parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
 def check_convergence(path: Path) -> bool:

@@ -72,6 +72,13 @@ def get_dataset_artifact(name: str) -> Path:
     return Path(download_path) / "archive.sdf.bz2"
 
 
+def get_filtered_artifact(name: str) -> Path:
+    run = run_controller.use_run(job_type="filter")
+    artifact = run.use_artifact(name, type="filtered-dataset")
+    download_path = artifact.download()
+    return Path(download_path) / "archive.sdf.bz2"
+
+
 def log_parser_artifact(
     artifact_name: str, output_path: Path, n_molecules: int
 ) -> None:
@@ -107,25 +114,23 @@ def log_filter_artifact(
 
 
 def log_vector_artifact(
-    args,
+    artifact_name: str,
     feature_vector,
-    features_output,
-    labels_output,
-    identities_output,
-    metadata_output,
+    output_dir: Path,
+    plot_histograms=False
 ):
     """Save generated vectors, metadata and histograms"""
     run = run_controller.use_run(job_type="vectorizer")
     artifact = wandb.Artifact(
-        name=args.artifact,
+        name=artifact_name,
         type="vectors",
         description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
     )
     # Upload the files
-    artifact.add_file(features_output, name="features.npy")
-    artifact.add_file(labels_output, name="labels.npy")
-    artifact.add_file(identities_output, name="identities.npy")
-    artifact.add_file(metadata_output, name="metadata.yml")
+    artifact.add_file(output_dir / "features.npy", name="features.npy")
+    artifact.add_file(output_dir / "labels.npy", name="labels.npy")
+    artifact.add_file(output_dir / "identities.npy", name="identities.npy")
+    artifact.add_file(output_dir / "metadata.yml", name="metadata.yml")
 
     # Save metadata
     artifact.metadata.update(cfg_agg)
@@ -137,28 +142,44 @@ def log_vector_artifact(
     )
 
     # Check if we need to log figures
-    if args.plot_histograms:
+    if plot_histograms:
         artifact.add_dir(cfg_plot["save-dir"])
 
     run.log_artifact(artifact)
 
 
-def log_model(model: tf.keras.Model) -> None:
+def log_keras_model(model: tf.keras.Model) -> None:
     """Save a model to weights and baises as an artifact"""
     run = run_controller.use_run(job_type="training")
     output_path = Path("/tmp/") / run.name
-    if hasattr(model, "save"):
-        model.save(output_path)
-    else:
-        out_file = output_path / "model"
-        out_file.parent.mkdir()
-        with out_file.open("wb") as f:
-            f.write(pickle.dumps(model))
+    model.save(output_path)
 
     artifact = wandb.Artifact(run.name, type="model")
     artifact.add_dir(output_path, name="model")
     run.log_artifact(artifact)
 
+    shutil.rmtree(
+        output_path, onerror=lambda *_: print("Failed to clean up model upload")
+    )
+
+
+def log_sklearn_model(model) -> None:
+    # Setup the run and save the model
+    run = run_controller.use_run(job_type="training")
+    output_path = Path("/tmp/") / run.name
+    out_file = output_path / "model"
+    out_file.parent.mkdir()
+
+    # Write out the model
+    with out_file.open("wb") as f:
+        f.write(pickle.dumps(model))
+
+    # Save the artifact
+    artifact = wandb.Artifact(run.name, type="model")
+    artifact.add_dir(output_path, name="model")
+    run.log_artifact(artifact)
+
+    # Delete the model
     shutil.rmtree(
         output_path, onerror=lambda *_: print("Failed to clean up model upload")
     )
