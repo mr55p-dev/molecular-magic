@@ -15,6 +15,6 @@ parameters:
   dataset_version:
     value: "latest"
   bond-bandwidth:
-    values: [0.01, 0.02, 0.04, 0.08, "scott"]
+    values: [0.02, 0.04, 0.08, 0.16, 0.32, "scott"]
   angle-bandwidth:
-    values: [0.01, 0.02, 0.04, 0.08, "scott"]
+    values: [0.02, 0.04, 0.08, 0.16, 0.32, "scott"]
