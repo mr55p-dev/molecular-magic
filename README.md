@@ -129,6 +129,9 @@ Taken from [daylight](https://www.daylight.com/dayhtml_tutorials/languages/smart
 7. Test the model on the testing dataset, generating a set of errors for the mols in the test data
 8. Analyse the error distribution across the train and test sets
 
+## Google cloud setup
+- Make sure you mount the ~/.config and /tmp/ directories and git repo to larger storage (possibly entire home directory) as the storage is insufficient
+
 <!-- - Install Git LFS (https://git-lfs.github.com/) and run the following commands in the local git folder:
   - `git lfs install`
   - `git lfs fetch`

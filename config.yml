@@ -2,7 +2,7 @@ extraction:
   # Filter configuration
   output-format: "sdf"
   bond-min-distance: 0
-  bond-max-distance:  100 # Practically infinite; why constrain bond length?
+  bond-max-distance: 100 # Practically infinite; why constrain bond length?
   min-heavy-atoms: 1
   max-heavy-atoms: 8
 
@@ -28,6 +28,7 @@ aggregation:
     - 6
     - 7
     - 8
+    - 9
   amine-types:
     - 1
     - 2

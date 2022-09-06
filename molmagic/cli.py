@@ -97,7 +97,7 @@ def molecule_filter(args: Namespace) -> None:
         infile = args.input_file
     else:
         ml.run_controller.use_run("filter")
-        infile = ml.get_dataset_artifact(args.input_artifact)
+        infile = ml.get_parser_artifact(args.input_artifact)
 
     # Read the archive into memory and filter using the local filters
     molecules = parser.read_sdf_archive(infile)

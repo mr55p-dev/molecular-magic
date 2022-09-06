@@ -65,6 +65,13 @@ def get_vector_artifact(name: str) -> Path:
     return Path(download_path)
 
 
+def get_parser_artifact(name: str) -> Path:
+    run = run_controller.use_run(job_type="filter")
+    artifact = run.use_artifact(name, type="dataset")
+    download_path = artifact.download()
+    return Path(download_path) / "archive.sdf.bz2"
+
+
 def get_dataset_artifact(name: str) -> Path:
     run = run_controller.use_run(job_type="vectorizer")
     artifact = run.use_artifact(name, type="filtered-dataset")
