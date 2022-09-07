@@ -15,20 +15,15 @@ fmt:
 Depends on `cclib` and `bz2`.
 """
 import sys
-import tarfile
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from tarfile import is_tarfile
-from typing import Iterable
 
 import numpy as np
 import oyaml as yaml
-from openbabel import pybel as pb
 from tqdm import tqdm
 
 from molmagic import ml, parser, vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic.config import extraction as cfg_ext
 from molmagic.rules import FilteredMols, global_filters, local_filters
 
 
@@ -158,8 +153,7 @@ def vectorize(args: Namespace) -> None:
         metadata_file = args.metadata
     elif args.remote_metadata:
         # Define the run context
-        run_dir = ml.get_vector_artifact(args.remote_metadata)
-        metadata_file = run_dir / "metadata.yml"
+        metadata_file = ml.get_vector_metadata(args.remote_metadata)
 
     if metadata_file:
         # Load the original configuration

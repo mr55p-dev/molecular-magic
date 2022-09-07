@@ -8,6 +8,7 @@ from molmagic.ml import (
     get_artifact_of_kind,
     get_filtered_artifact,
     get_sklearn_model,
+    get_vector_metadata,
     log_test_vector_artifact,
     run_controller,
     get_keras_model,
@@ -50,9 +51,8 @@ elif model_type == "Keras":
 ### Create the generalisation dataset
 # 1. Get the vectors artifact produced by this run
 train_vectors = get_artifact_of_kind(model_run_name, "vectors")
-metadata_ref = train_vectors.get_path("metadata.yml")
-metadata_path = metadata_ref.download()
-metadata_path = Path(metadata_path)
+train_metadata = get_vector_metadata(train_vectors)
+
 
 # Extract the data and metadata from the config
 with metadata_path.open("r") as fi:

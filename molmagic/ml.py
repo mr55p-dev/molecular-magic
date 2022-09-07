@@ -77,10 +77,17 @@ def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
 
 def get_vector_artifact(name: str) -> Path:
     """Download a vector dataset by name"""
-    artifact = run_controller.use_run().use_artifact(name, type="train-vectors")
+    artifact = run_controller.use_run().use_artifact(name, type="vectors")
     download_path = artifact.download()
 
     return Path(download_path)
+
+
+def get_vector_metadata(name: Union[str, wandb.Artifact]) -> Path:
+    """Download a metadata file by artifact name"""
+    artifact = run_controller.use_run().use_artifact(name, type="vectors")
+    metadata_reference = artifact.get_path("metadata.yml")
+    return Path(metadata_reference.download())
 
 
 def get_parser_artifact(name: str) -> Path:
