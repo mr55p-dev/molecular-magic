@@ -6,7 +6,7 @@ Requires cclib and bz2 to be installed
 """
 from os import PathLike
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Union
 import openbabel.pybel as pb
 import cclib
 import bz2
@@ -14,6 +14,7 @@ from molmagic.config import extraction as cfg
 import tarfile
 from molmagic.config import qm9_exclude
 from tqdm import tqdm
+from rdkit import Chem
 
 
 def parse_files(paths: list[Path]) -> Iterable[pb.Molecule]:
@@ -167,6 +168,21 @@ def read_sdf_archive(archive_path: Path) -> Iterable[pb.Molecule]:
 
                 # Construct an pb.Molecule
                 yield pb.readstring(format="sdf", string=sdf_string)
+
+
+def convert_pb_to_rdkit(
+    molecules: Union[pb.Molecule, list[pb.Molecule]]
+) -> Chem.rdmolfiles.SDMolSupplier:
+    """Convert a pybel molecule(s) into an rdkit supplier (list of molecules) using SDF strings as an intermediary"""
+    # Write to SDF
+    if isinstance(molecules, pb.Molecule):
+        molecules = [molecules]
+    sdf_data = "".join(map(lambda x: x.write("sdf"), molecules))
+
+    # Read from SDF
+    supplier = Chem.rdmolfiles.SDMolSupplier()
+    supplier.SetData(sdf_data)
+    return supplier
 
 
 def write_compressed_sdf(

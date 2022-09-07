@@ -2,7 +2,7 @@ import shutil
 import pickle
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 import tensorflow as tf
@@ -34,13 +34,31 @@ class WandBRun:
 run_controller = WandBRun()
 
 
-def get_model_artifact(name: str) -> tf.keras.Model:
+def get_keras_model(artifact: Union[str, wandb.Artifact]) -> tf.keras.Model:
     """Download a model by name"""
-    artifact = run_controller.use_run().use_artifact(name, type="model")
-    model_path = Path(artifact.download())
+    artifact_data = run_controller.use_run().use_artifact(artifact, type="model")
+    model_path = Path(artifact_data.download())
     model = tf.keras.models.load_model(model_path / "model")
     shutil.rmtree(model_path)
     return model
+
+
+def get_sklearn_model(artifact: Union[str, wandb.Artifact]) -> Path:
+    """Download an SKLearn model by name"""
+    artifact_data = run_controller.use_run().use_artifact(artifact, type="model")
+    return Path(artifact_data.download() / 'model.pkl')
+
+
+def get_artifact_of_kind(run_name: str, kind: str) -> wandb.Artifact:
+    """Get an artifact produced by a run based on the type generated"""
+    api = wandb.Api()
+    artifacts = [
+        artifact
+        for artifact in api.run(run_name).logged_artifacts()
+        if artifact.type == "model"
+    ]
+    assert len(artifacts) == 1
+    return artifacts[0]
 
 
 def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
@@ -121,10 +139,7 @@ def log_filter_artifact(
 
 
 def log_vector_artifact(
-    artifact_name: str,
-    feature_vector,
-    output_dir: Path,
-    plot_histograms=False
+    artifact_name: str, feature_vector, output_dir: Path, plot_histograms=False
 ):
     """Save generated vectors, metadata and histograms"""
     run = run_controller.use_run(job_type="vectorizer")
