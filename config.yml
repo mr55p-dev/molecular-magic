@@ -3,8 +3,8 @@ extraction:
   output-format: "sdf"
   bond-min-distance: 0
   bond-max-distance: 100 # Practically infinite; why constrain bond length?
-  min-heavy-atoms: 1
-  max-heavy-atoms: 8
+  min-heavy-atoms: 9
+  max-heavy-atoms: 12
 
   # Configuration when extracting mol info
   hbond-atoms:
