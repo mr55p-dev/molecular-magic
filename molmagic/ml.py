@@ -46,7 +46,7 @@ def get_keras_model(artifact: Union[str, wandb.Artifact]) -> tf.keras.Model:
 def get_sklearn_model(artifact: Union[str, wandb.Artifact]) -> Path:
     """Download an SKLearn model by name"""
     artifact_data = run_controller.use_run().use_artifact(artifact, type="model")
-    return Path(artifact_data.download() / 'model.pkl')
+    return Path(artifact_data.download()) / "model" / "model"
 
 
 def get_artifact_of_kind(run_name: str, kind: str) -> wandb.Artifact:
@@ -55,7 +55,7 @@ def get_artifact_of_kind(run_name: str, kind: str) -> wandb.Artifact:
     artifacts = [
         artifact
         for artifact in api.run(run_name).logged_artifacts()
-        if artifact.type == "model"
+        if artifact.type == kind
     ]
     assert len(artifacts) == 1
     return artifacts[0]
@@ -77,7 +77,7 @@ def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
 
 def get_vector_artifact(name: str) -> Path:
     """Download a vector dataset by name"""
-    artifact = run_controller.use_run().use_artifact(name, type="vectors")
+    artifact = run_controller.use_run().use_artifact(name, type="train-vectors")
     download_path = artifact.download()
 
     return Path(download_path)
@@ -138,6 +138,32 @@ def log_filter_artifact(
     run.log_artifact(artifact)
 
 
+def log_test_vector_artifact(artifact_name: str, feature_vector, output_dir: Path):
+    """Save generated vectors, metadata and histograms"""
+    run = run_controller.use_run(job_type="evaluation")
+    artifact = wandb.Artifact(
+        name=artifact_name,
+        type="test-vectors",
+        description=f"Output of molmagic.cli.vectorize for the {artifact_name} dataset",
+    )
+    # Upload the files
+    artifact.add_file(output_dir / "features.npy", name="features.npy")
+    artifact.add_file(output_dir / "labels.npy", name="labels.npy")
+    artifact.add_file(output_dir / "identities.npy", name="identities.npy")
+    artifact.add_file(output_dir / "metadata.yml", name="metadata.yml")
+
+    # Save metadata
+    artifact.metadata.update(cfg_agg)
+    artifact.metadata.update(
+        {
+            "n_instances": feature_vector.shape[0],
+            "n_features": feature_vector.shape[1],
+        }
+    )
+
+    run.log_artifact(artifact)
+
+
 def log_vector_artifact(
     artifact_name: str, feature_vector, output_dir: Path, plot_histograms=False
 ):
@@ -146,7 +172,7 @@ def log_vector_artifact(
     artifact = wandb.Artifact(
         name=artifact_name,
         type="vectors",
-        description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
+        description=f"Output of molmagic.cli.vectorize for the {artifact_name} dataset",
     )
     # Upload the files
     artifact.add_file(output_dir / "features.npy", name="features.npy")
