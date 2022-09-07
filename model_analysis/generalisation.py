@@ -48,14 +48,14 @@ elif model_type == "Keras":
     model = get_keras_model(model_artifact)
 
 
-### Create the generalisation dataset
+# Create the generalisation dataset
 # 1. Get the vectors artifact produced by this run
 train_vectors = get_artifact_of_kind(model_run_name, "vectors")
 train_metadata = get_vector_metadata(train_vectors)
 
 
 # Extract the data and metadata from the config
-with metadata_path.open("r") as fi:
+with train_metadata.open("r") as fi:
     constructor = yaml.load(fi, Loader=yaml.CLoader)
 data = constructor["data"]
 metadata = constructor["metadata"]
@@ -78,12 +78,14 @@ output_dir.mkdir()
 np.save(output_dir / "features.npy", features)
 np.save(output_dir / "labels.npy", labels)
 np.save(output_dir / "identities.npy", identities)
-copy(metadata_path, output_dir / "metadata.yml")
+copy(train_metadata, output_dir / "metadata.yml")
 
 eval_vectors_name = eval_dataset_name.split(":")[0]
 eval_vectors_name += f"-{model_run.config['bond-bandwidth']}"
 eval_vectors_name += f"-{model_run.config['bond-bandwidth']}"
-log_test_vector_artifact(eval_vectors_name.replace("std", "heavy"), features, output_dir)
+log_test_vector_artifact(
+    eval_vectors_name, features, output_dir
+)
 
 # "Load" the generalisation dataset
 X_eval = features
@@ -98,28 +100,34 @@ mae = y_err.mean()
 print(y_err.mean())
 
 # %% Get top10 error molecules
-top10_idx = np.argsort(y_err)[:-10]
+top10_idx = np.argsort(y_err, axis=0)[-10:, :]
 mol_err_iterator = zip(molecules, idx_eval, y_err)
 top10_mols, top10_ids, top10_errs = zip(
     *[(mol, id, err) for mol, id, err in mol_err_iterator if id in idx_eval[top10_idx]]
 )
 
 # %% Create an error artifact and attach the structures
-err_artifact = wandb.Artifact(model_run_name, "errors")
+err_artifact = wandb.Artifact(run.name, "errors")
 
 rdkit_mols = convert_pb_to_rdkit(top10_mols)
 artifact_mols = [
     wandb.data_types.Molecule.from_rdkit(
-        mol, caption=f"Moleucle id: {id}, error: {err}"
+        mol,
+        caption=f"Moleucle id: {id}, error: {err}",
+        convert_to_3d_and_optimize=False,
+        mmff_optimize_molecule_max_iterations=0,
     )
-    for mol, id, err in zip(top10_mols, top10_ids, top10_errs)
+    for mol, id, err in zip(rdkit_mols, top10_ids, top10_errs)
 ]
 
-for artifact_mol, id in zip(artifact_mols):
+for artifact_mol, id in zip(artifact_mols, top10_ids):
     err_artifact.add(artifact_mol, str(id))
 
 # Create an error table
-err_data = pd.DataFrame([top10_ids, top10_errs], columns=["Molecule ID", "Error (Kcal/mol)"], )
+err_data = pd.DataFrame(
+    .zip(*[top10_ids.reshape(-1), top10_errs.reshape(-1)]),
+    columns=["Molecule ID", "Error (Kcal/mol)"],
+)
 err_table = wandb.Table(data=err_data)
 err_artifact.add(err_table, "errors")
 
