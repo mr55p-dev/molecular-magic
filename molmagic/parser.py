@@ -179,7 +179,9 @@ def write_compressed_sdf(
     n_mols = 0
     with outpath.open("wb") as buffer:
         # Iterate the molecules
-        for mol in tqdm(mol_subset, total=n_instances if n_instances else None, leave=False):
+        for mol in tqdm(
+            mol_subset, total=n_instances if n_instances else None, leave=False
+        ):
             # Pybel returns a string if no output file is provided
             raw_output: str = mol.write(format=cfg["output-format"])
             # Encode the string to utf8 bytes
