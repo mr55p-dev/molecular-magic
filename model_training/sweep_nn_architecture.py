@@ -167,7 +167,7 @@ history = model.fit(
     train,
     validation_data=test,
     callbacks=callbacks,
-    epochs=1,
+    epochs=epochs,
 )
 
 # Save the model to wandb
