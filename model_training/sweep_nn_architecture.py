@@ -127,7 +127,12 @@ test = (
 l_input = tf.keras.Input(shape=(X_train_np.shape[1],))
 l_hidden = l_input
 for _ in range(n_layers):
-    l_hidden = tf.keras.layers.Dense(n_nodes)(l_hidden)
+    l_hidden = tf.keras.layers.Dense(
+        n_nodes,
+        activity_regularizer=tf.keras.regularizers.l1_l2(
+            l1=l1_regularization, l2=l2_regularization
+        ),
+    )(l_hidden)
     l_hidden = tf.keras.layers.Activation(activation_function)(l_hidden)
 l_output = tf.keras.layers.Dense(1)(l_hidden)
 
@@ -153,6 +158,7 @@ callbacks = [
     ),
     tf.keras.callbacks.EarlyStopping(
         monitor="val_loss",
+        mode="min",
         patience=paitence,
         restore_best_weights=True,
     ),

@@ -34,10 +34,15 @@ parameters:
   training_artifact:
     value: "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
   n_layers:
-    values: [1, 2, 3, 4, 5]
+    distribution: int_uniform
+    min: 1
+    max: 5
   layer_size:
+    distribution: categorical
     values: [256, 512, 768]
   l1_regularisation:
+    distribution: categorical
     values: [0, 0.01]
   l2_regularisation:
+    distribution: categorical
     values: [0, 0.01]
