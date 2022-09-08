@@ -107,7 +107,8 @@ splitter = ml.get_split(split_type)
 X_train_np, X_test_np, y_train_np, y_test_np = splitter(X, y, random_state=random_seed)
 
 # Convert to tf.data
-n_devices = len(gpus) if len(gpus) else 1
+# n_devices = len(gpus) if len(gpus) else 1
+n_devices = 1
 train = (
     tf.data.Dataset.from_tensor_slices((X_train_np, y_train_np))
     .batch(batch_size * n_devices)
