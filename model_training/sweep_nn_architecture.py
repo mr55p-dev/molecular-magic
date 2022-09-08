@@ -122,55 +122,63 @@ test = (
 )
 
 # Create the architecture in distributed scope
-with strategy.scope():
-    # Define the model
-    l_input = tf.keras.Input(shape=(X_train_np.shape[1],))
-    l_hidden = l_input
-    for _ in range(n_layers):
-        l_hidden = tf.keras.layers.Dense(n_nodes)(l_hidden)
-        l_hidden = tf.keras.layers.Activation(activation_function)(l_hidden)
-    l_output = tf.keras.layers.Dense(1)(l_hidden)
+# scope = strategy.scope().__enter__()
+# Define the model
+l_input = tf.keras.Input(shape=(X_train_np.shape[1],))
+l_hidden = l_input
+for _ in range(n_layers):
+    l_hidden = tf.keras.layers.Dense(n_nodes)(l_hidden)
+    l_hidden = tf.keras.layers.Activation(activation_function)(l_hidden)
+l_output = tf.keras.layers.Dense(1)(l_hidden)
 
-    # Compile the model
-    loss_func = tf.keras.losses.get(loss)
-    optimizer_func = tf.keras.optimizers.get(
-        {"class_name": optimizer, "config": {"learning_rate": learning_rate}}
-    )
+# Compile the model
+loss_func = tf.keras.losses.get(loss)
+optimizer_func = tf.keras.optimizers.get(
+    {"class_name": optimizer, "config": {"learning_rate": learning_rate}}
+)
 
-    model = tf.keras.Model(inputs=l_input, outputs=l_output)
-    model.compile(
-        loss=loss_func,
-        optimizer=optimizer_func,
-        metrics=["mse", "mae"],
-    )
+model = tf.keras.Model(inputs=l_input, outputs=l_output)
+model.compile(
+    loss=loss_func,
+    optimizer=optimizer_func,
+    metrics=["mse", "mae"],
+)
 
-    # Fit the model
-    callbacks = [
-        WandbCallback(
-            monitor="val_loss",
-            log_weights=True,
-            save_model=False,
+# Fit the model
+callbacks = [
+    WandbCallback(
+        monitor="val_loss",
+        log_weights=True,
+        save_model=False,
+    ),
+    tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        patience=paitence,
+        restore_best_weights=True,
+    ),
+]
+history = model.fit(
+    train,
+    validation_data=test,
+    callbacks=callbacks,
+    epochs=1,
+)
+
+# Save the model to wandb
+ml.log_keras_model(model)
+
+# Make predictions on the train set for error distribution analysis
+y_pred = model.predict(test)
+
+absolute_err = np.abs(y_test_np - y_pred)
+err_table = wandb.Table(data=pd.DataFrame(absolute_err, columns=["Absolute error"]))
+
+wandb.log(
+    {
+        "Error table": err_table,
+        "Error histogram": wandb.plot.histogram(
+            err_table, "Absolute error", "Absolute error distribution"
         ),
-        tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=paitence,
-            restore_best_weights=True,
-        ),
-    ]
-    history = model.fit(
-        train,
-        validation_data=test,
-        callbacks=callbacks,
-        epochs=1,
-    )
-
-    # Save the model to wandb
-    ml.log_keras_model(model)
-
-    # Make predictions on the train set for error distribution analysis
-    y_pred = model.predict(test)
-    absolute_err = np.abs(y_test_np - y_pred)
-    err_table = wandb.Table(
-        data=pd.DataFrame(absolute_err.reshape(-1, 1), columns=["Absolute error"])
-    )
-    wandb.log({"Error table": err_table})
+    }
+)
+# scope.__exit__()
