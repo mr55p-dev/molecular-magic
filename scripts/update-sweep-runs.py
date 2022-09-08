@@ -1,25 +1,25 @@
+from shutil import rmtree
 import wandb
+import pickle as p
+from pathlib import Path
+from molmagic.ml import get_artifact_of_kind
+from tqdm import tqdm
 
 
 # Get all the associated runs
 api = wandb.Api()
-sweep = api.sweep("molecular-magicians/MolecularMagic/lyndnrg3")
+sweep = api.sweep("molecular-magicians/MolecularMagic/hqb9gzxa")
 
-for run in sweep.runs:
+for run in tqdm(sweep.runs):
     # Get the generated vector dataset
-    produced_vectors = [
-        artifact for artifact in run.logged_artifacts() if artifact.type == "vectors"
-    ]
-    assert len(produced_vectors) == 1
-    vectors = produced_vectors[0]
-
-    # Get the number of instances and features
-    n_features = vectors.metadata["n_features"]
-    n_instances = vectors.metadata["n_instances"]
-
-    # Update the run config and save
-    run.summary.update({"n_features": n_features, "n_instances": n_instances})
+    artifact = get_artifact_of_kind(run.entity + "/" + run.project + "/" + run.id, "model")
+    artifact_path = Path(artifact.download())
+    model = artifact_path / "model" / "model"
+    with model.open("rb") as f:
+        m = p.loads(f.read())
+    run.summary.update({"alpha": m.alpha_})
     run.update()
+    rmtree(artifact_path)
 
 
 
