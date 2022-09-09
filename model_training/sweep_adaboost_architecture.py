@@ -86,8 +86,8 @@ ml.log_sklearn_model(fitted_model)
 
 # Make predictions on the train set for error distribution analysis
 y_pred = model.predict(X_test).squeeze()
-val_mae = mean_squared_error(y_test.squeeze(), y_pred)
-val_mse = mean_absolute_error(y_test.squeeze(), y_pred)
+val_mse = mean_squared_error(y_test.squeeze(), y_pred)
+val_mae = mean_absolute_error(y_test.squeeze(), y_pred)
 
 absolute_err = np.abs(y_test.squeeze() - y_pred).reshape(-1, 1)
 err_table = wandb.Table(data=pd.DataFrame(absolute_err, columns=["Absolute error"]))

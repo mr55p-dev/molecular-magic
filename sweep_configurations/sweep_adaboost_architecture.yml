@@ -8,7 +8,7 @@ command:
   - ${program}
 metric:
   goal: minimize
-  name: val_loss
+  name: val_mae
 parameters:
   splitting_type:
     value: random
