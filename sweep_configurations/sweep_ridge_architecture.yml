@@ -1,0 +1,22 @@
+project: MolecularMagic
+name: ridge-architecture-sweep
+program: "model_training/sweep_ridge_architecture.py"
+method: bayes
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+metric:
+  goal: minimize
+  name: val_mae
+parameters:
+  splitting_type:
+    value: random
+  label_name:
+    value: free_energy
+  ridge_alpha:
+    distribution: log_uniform_values
+    min: 1e-3
+    max: 1e0
+  training_artifact:
+    value: "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
