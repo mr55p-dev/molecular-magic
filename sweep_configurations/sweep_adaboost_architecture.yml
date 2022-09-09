@@ -1,7 +1,7 @@
 project: MolecularMagic
 name: adaboost-architecture-sweep
 program: "model_training/sweep_adaboost_architecture.py"
-method: bayes
+method: grid
 command:
   - ${env}
   - ${interpreter}
