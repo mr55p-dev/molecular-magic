@@ -1,5 +1,5 @@
 import pickle
-from argparse import Namespace
+from argparse import ArgumentParser, Namespace
 
 import numpy as np
 import pandas as pd
@@ -148,13 +148,12 @@ def main(model_run_name: str):
     run.finish()
 
 
-if __name__ == "__main__":
-    for i in [
-        # "MolecularMagic/owsag7b1",
-        "MolecularMagic/krgortv1",
-        "MolecularMagic/0nc8edho",
-    ]:
-        main(i)
+def cli_tool():
+    parser = ArgumentParser("top10_generalization")
+    parser.add_argument("run_name", type=str)
+
+    args = parser.parse_args()
+    main(args.run_name)
 
     # parser = ArgumentParser()
     # parser.add_argument("model", type=str, help="The model which is to be tested")
