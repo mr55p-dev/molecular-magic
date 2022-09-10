@@ -14,6 +14,7 @@ fmt:
 
 Depends on `cclib` and `bz2`.
 """
+import shutil
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -179,9 +180,9 @@ def vectorize(args: Namespace) -> None:
 
     # Check the output path exists
     if not args.output:
-        args.output = Path("/tmp/")
-    else:
-        args.output.mkdir(exist_ok=True)
+        args.output = Path("/tmp/") / ml.run_controller.run.name
+
+    args.output.mkdir(exist_ok=True)
 
     # Define the paths
     features_output = args.output / "features.npy"
@@ -198,6 +199,8 @@ def vectorize(args: Namespace) -> None:
     if not (args.metadata or args.remote_metadata):
         with (metadata_output).open("w") as metadata_file:
             yaml.dump(calculated_metadata, metadata_file)
+    else:
+        shutil.copy(metadata_file, args.output)
 
     # Create an artifact if we are asked to do so
     if args.artifact:

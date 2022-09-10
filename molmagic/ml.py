@@ -68,7 +68,7 @@ def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
 
     producer_run = artifact.logged_by()
     consumed_artifcacts = producer_run.used_artifacts()
-    consumed_datasets = [i for i in consumed_artifcacts if i.type == "dataset"]
+    consumed_datasets = [i for i in consumed_artifcacts if i.type == "filtered-dataset"]
     assert len(consumed_datasets) == 1
 
     producer_dataset = consumed_datasets[0]
