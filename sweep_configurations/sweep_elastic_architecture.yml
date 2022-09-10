@@ -1,6 +1,6 @@
 project: MolecularMagic
-name: ridge-architecture-sweep
-program: "model_training/sweep_ridge_architecture.py"
+name: elastic-architecture-sweep
+program: "model_training/sweep_elastic_architecture.py"
 method: grid
 command:
   - ${env}

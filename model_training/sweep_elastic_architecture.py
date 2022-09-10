@@ -71,6 +71,5 @@ wandb.log(
         "Error histogram": wandb.plot.histogram(
             err_table, "Absolute error", "Absolute error distribution"
         ),
-        "Solver": fitted_model.solver,
     }
 )
