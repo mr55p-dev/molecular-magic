@@ -18,10 +18,9 @@ from rdkit import Chem
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
-def main(args: Namespace):
+def main(model_run_name: str):
     api = wandb.Api()
     # variables
-    model_run_name = "molecular-magicians/MolecularMagic/a4vy61c7"  # The run which generated the model
     eval_vectors_name = "qm9-test-HCNOF-0.8-0.32:latest"
     label_type = "free_energy"
 
@@ -146,10 +145,17 @@ def main(args: Namespace):
 
     # Log the artifact
     run.log_artifact(err_artifact)
+    run.finish()
 
 
 if __name__ == "__main__":
-    main(...)
+    for i in [
+        # "MolecularMagic/owsag7b1",
+        "MolecularMagic/krgortv1",
+        "MolecularMagic/0nc8edho",
+    ]:
+        main(i)
+
     # parser = ArgumentParser()
     # parser.add_argument("model", type=str, help="The model which is to be tested")
     # parser.add_argument(
