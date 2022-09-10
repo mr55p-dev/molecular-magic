@@ -6,6 +6,6 @@ setuptools.setup(
   packages=["molmagic"],
   install_requires=[],
   entry_points={
-      'console_scripts': ['magic=molmagic.cli:main'],
+      'console_scripts': ['magic=molmagic.cli:main', 'generalize=model_analysis.top10_errors:cli_tool'],
   }
 )
