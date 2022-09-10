@@ -31,7 +31,7 @@ def main(model_run_name: str):
     model_artifact = get_artifact_of_kind(model_run_name, "model")
     model_run = api.run(model_run_name)
     model_type = model_run.config.get("algorithm", "Keras")
-    assert model_type in ["Ridge", "RidgeCV", "AdaBoost", "Keras"]
+    assert model_type in ["Ridge", "RidgeCV", "Elastic", "AdaBoost", "Keras"]
 
     # Load the model
     if model_type == "Keras":

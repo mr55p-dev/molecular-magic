@@ -26,7 +26,7 @@ random_seed = 50
 # WandB setup (populated due to the sweep)
 run = wandb.init()
 run_controller.set_run(run)
-run.config.update({"algorithm": "Ridge", "seed": random_seed})
+run.config.update({"algorithm": "Elastic", "seed": random_seed})
 
 # Experimental setup
 split_type = run.config["splitting_type"]
@@ -47,7 +47,7 @@ splitter = ml.get_split(split_type)
 X_train, X_test, y_train, y_test = splitter(X, y, random_state=random_seed)
 
 # Define the model
-model = ElasticNet(alpha=alpha, random_state=random_seed, max_iter=max_iter, l1_ratio=l1_ratio, alpha=alpha)
+model = ElasticNet(random_state=random_seed, max_iter=max_iter, l1_ratio=l1_ratio, alpha=alpha)
 
 # Fit the model
 fitted_model = model.fit(X_train, y_train.squeeze())
