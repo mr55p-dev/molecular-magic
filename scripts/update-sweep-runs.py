@@ -12,7 +12,9 @@ sweep = api.sweep("molecular-magicians/MolecularMagic/hqb9gzxa")
 
 for run in tqdm(sweep.runs):
     # Get the generated vector dataset
-    artifact = get_artifact_of_kind(run.entity + "/" + run.project + "/" + run.id, "model")
+    artifact = get_artifact_of_kind(
+        run.entity + "/" + run.project + "/" + run.id, "model"
+    )
     artifact_path = Path(artifact.download())
     model = artifact_path / "model" / "model"
     with model.open("rb") as f:
@@ -20,6 +22,3 @@ for run in tqdm(sweep.runs):
     run.summary.update({"alpha": m.alpha_})
     run.update()
     rmtree(artifact_path)
-
-
-

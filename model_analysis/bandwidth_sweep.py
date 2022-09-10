@@ -1,34 +1,36 @@
-from argparse import ArgumentParser, Namespace
-from rdkit import Chem
-from shutil import copy, rmtree
-import oyaml as yaml
-from pathlib import Path
 import pickle
+from argparse import Namespace
+from pathlib import Path
+from shutil import copy, rmtree
+
 import numpy as np
+import oyaml as yaml
+import pandas as pd
+import wandb
+from molmagic.aggregator import bin_mols
 from molmagic.ml import (
     get_artifact_of_kind,
     get_filtered_artifact,
+    get_keras_model,
+    get_label_type,
     get_sklearn_model,
     get_vector_metadata,
     log_vector_artifact,
     run_controller,
-    get_keras_model,
-    get_label_type,
 )
 from molmagic.parser import convert_pb_to_rdkit, read_sdf_archive
-from molmagic.aggregator import bin_mols
-import pandas as pd
-import wandb
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-
 from molmagic.vectorizer import calculate_mol_data
+from rdkit import Chem
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
 def main(args: Namespace):
     api = wandb.Api()
     # variables
     model_run_name = "molecular-magicians/MolecularMagic/a4vy61c7"  # The run which generated the model
-    train_vectors_artifact = "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
+    train_vectors_artifact = (
+        "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
+    )
     eval_dataset_name = "qm9-test-HCNOF:v0"
     label_type = "free_energy"
 
