@@ -145,32 +145,6 @@ def log_filter_artifact(
     run.log_artifact(artifact)
 
 
-def log_test_vector_artifact(artifact_name: str, feature_vector, output_dir: Path):
-    """Save generated vectors, metadata and histograms"""
-    run = run_controller.use_run(job_type="evaluation")
-    artifact = wandb.Artifact(
-        name=artifact_name,
-        type="test-vectors",
-        description=f"Output of molmagic.cli.vectorize for the {artifact_name} dataset",
-    )
-    # Upload the files
-    artifact.add_file(output_dir / "features.npy", name="features.npy")
-    artifact.add_file(output_dir / "labels.npy", name="labels.npy")
-    artifact.add_file(output_dir / "identities.npy", name="identities.npy")
-    artifact.add_file(output_dir / "metadata.yml", name="metadata.yml")
-
-    # Save metadata
-    artifact.metadata.update(cfg_agg)
-    artifact.metadata.update(
-        {
-            "n_instances": feature_vector.shape[0],
-            "n_features": feature_vector.shape[1],
-        }
-    )
-
-    run.log_artifact(artifact)
-
-
 def log_vector_artifact(
     artifact_name: str, feature_vector, output_dir: Path, plot_histograms=False
 ):

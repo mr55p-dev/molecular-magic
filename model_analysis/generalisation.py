@@ -1,4 +1,3 @@
-# %%
 from argparse import ArgumentParser, Namespace
 from rdkit import Chem
 from shutil import copy, rmtree
@@ -11,7 +10,7 @@ from molmagic.ml import (
     get_filtered_artifact,
     get_sklearn_model,
     get_vector_metadata,
-    log_test_vector_artifact,
+    log_vector_artifact,
     run_controller,
     get_keras_model,
     get_label_type,
@@ -28,7 +27,8 @@ from molmagic.vectorizer import calculate_mol_data
 def main(args: Namespace):
     api = wandb.Api()
     # variables
-    model_run_name = "MolecularMagic/xq9zfdf6"  # The run which generated the model
+    model_run_name = "molecular-magicians/MolecularMagic/a4vy61c7"  # The run which generated the model
+    train_vectors_artifact = "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
     eval_dataset_name = "qm9-test-HCNOF:v0"
     label_type = "free_energy"
 
@@ -39,20 +39,19 @@ def main(args: Namespace):
     model_artifact = get_artifact_of_kind(model_run_name, "model")
     model_run = api.run(model_run_name)
     model_type = model_run.config.get("algorithm", "Keras")
-    assert model_type in ["RidgeCV", "AdaBoost", "Keras"]
+    assert model_type in ["Ridge", "RidgeCV", "AdaBoost", "Keras"]
 
     # Load the model
-    if model_type == "RidgeCV":
+    if model_type == "Keras":
+        model = get_keras_model(model_artifact)
+    else:
         model_data = get_sklearn_model(model_artifact)
         with model_data.open("rb") as model_file:
             model = pickle.loads(model_file.read())
-    elif model_type == "Keras":
-        model = get_keras_model(model_artifact)
 
     # Create the generalisation dataset
     # 1. Get the vectors artifact produced by this run
-    train_vectors = get_artifact_of_kind(model_run_name, "vectors")
-    train_metadata = get_vector_metadata(train_vectors)
+    train_metadata = get_vector_metadata(train_vectors_artifact)
 
     # Extract the data and metadata from the config
     with train_metadata.open("r") as fi:
@@ -83,7 +82,7 @@ def main(args: Namespace):
     eval_vectors_name = eval_dataset_name.split(":")[0]
     eval_vectors_name += f"-{model_run.config['bond-bandwidth']}"
     eval_vectors_name += f"-{model_run.config['bond-bandwidth']}"
-    log_test_vector_artifact(eval_vectors_name, features, output_dir)
+    log_vector_artifact(eval_vectors_name, features, output_dir)
 
     # "Load" the generalisation dataset
     X_eval = features
