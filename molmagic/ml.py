@@ -72,7 +72,7 @@ def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
     assert len(consumed_datasets) == 1
 
     producer_dataset = consumed_datasets[0]
-    return Path(producer_dataset.download())
+    return Path(producer_dataset.download()) / "archive.sdf.bz2"
 
 
 def get_vector_artifact(name: str) -> Path:
