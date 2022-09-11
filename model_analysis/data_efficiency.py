@@ -1,5 +1,5 @@
 # Imports and initialisation
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import numpy as np
 import wandb
 from molmagic import ml
@@ -13,6 +13,7 @@ import tensorflow as tf
 
 
 def construct_wrapper(algorithm: str, **kwargs):
+    """Wrapper to enable constructing a model from its wandb parameters"""
     random_seed = kwargs.get(["seed"], 50)
     if algorithm == "Keras":
         tf.random.set_seed(random_seed)
@@ -39,6 +40,7 @@ def construct_wrapper(algorithm: str, **kwargs):
 def fit_wrapper(
     model, algorithm: str, X_train: np.ndarray, y_train: np.ndarray, **kwargs
 ):
+    """Wrapper to fit a model regardless of how its built"""
     if algorithm == "Keras":
         _ = model.fit(x=X_train, y=y_train, epochs=kwargs["epochs"])
         return model
@@ -66,7 +68,6 @@ def main(args: Namespace):
 
     # Get the parameters
     algorithm = basis_run.config["algorithm"]
-    split_type = basis_run.config["splitting_type"]
     label_type = basis_run.config["label_name"]
     training_artifact = basis_run.config["training_artifact"]
 
@@ -81,7 +82,6 @@ def main(args: Namespace):
     train_split_sizes = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     for train_split in train_split_sizes:
         # Do cross validation with a train/test split size == split
-
         maes = []
         mses = []
         for fold in ...:
