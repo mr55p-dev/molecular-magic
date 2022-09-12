@@ -9,7 +9,8 @@ setuptools.setup(
         "console_scripts": [
             "magic=molmagic.cli:main",
             "magic-generalize=model_analysis.top10_errors:cli_tool",
-            "magic-inference=model_analysis.inference:cli_tool"
+            "magic-inference=model_analysis.inference:cli_tool",
+            "magic-efficiency=model_analysis.data_efficiency:cli_tool",
         ],
     },
 )
