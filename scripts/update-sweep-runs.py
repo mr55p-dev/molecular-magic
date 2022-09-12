@@ -9,7 +9,7 @@ from tqdm import tqdm
 # Get all the associated runs
 api = wandb.Api()
 # runs = api.runs(filters={"tags": {"$in": ["Neural-Network"]}})
-sweep = api.sweep("molecular-magicians/MolecularMagic/9iguqpio")
+sweep = api.sweep("molecular-magicians/MolecularMagic/e9b8c8je")
 
 for run in tqdm(sweep.runs):
     # Get the generated vector dataset
