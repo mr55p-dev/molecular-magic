@@ -15,7 +15,11 @@ from molmagic.ml import (
 )
 from molmagic.parser import convert_pb_to_rdkit, read_sdf_archive
 from rdkit import Chem
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    mean_absolute_percentage_error,
+)
 
 
 def main(model_run_name: str):
@@ -55,17 +59,20 @@ def main(model_run_name: str):
     y_pred = model.predict(X_eval).reshape(-1, 1)
     err = y_pred - y_eval
     abs_err = np.abs(err)
+    abs_percent_error = abs_err / y_eval
     mae = mean_absolute_error(y_eval.squeeze(), y_pred.squeeze())
     mse = mean_squared_error(y_eval.squeeze(), y_pred.squeeze())
+    mape = mean_absolute_percentage_error(y_eval.squeeze(), y_pred.squeeze())
 
     # Create an error table
     err_data = pd.DataFrame(
-        zip(*[idx_eval, y_eval, y_pred, abs_err]),
+        zip(*[idx_eval, y_eval, y_pred, abs_err, abs_percent_error]),
         columns=[
             "Molecule ID",
             "Free energy (Kcal/mol)",
             "Predicted energy (Kcal/mol)",
             "Error (Kcal/mol)",
+            "Percent error (Kcal/mol)",
         ],
     )
     err_table = wandb.Table(data=err_data)
@@ -74,7 +81,13 @@ def main(model_run_name: str):
     )
 
     run.log(
-        {"mse": mse, "mae": mae, "Error table": err_table, "Error histogram": err_hist}
+        {
+            "mse": mse,
+            "mae": mae,
+            "mape": mape,
+            "Error table": err_table,
+            "Error histogram": err_hist,
+        }
     )
 
     # Create a table of absolute errors
