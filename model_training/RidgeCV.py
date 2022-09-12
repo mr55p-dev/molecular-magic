@@ -35,6 +35,6 @@ run.config.update({
 run.log({
     "mean_absolute_error": mae,
 })
-ml.log_model(reg)
+ml.log_sklearn_model(reg)
 
 print(mae)

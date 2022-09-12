@@ -1,0 +1,60 @@
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+early_terminate:
+  min_iter: 20
+  type: hyperband
+method: bayes
+metric:
+  goal: minimize
+  name: val_loss
+name: nn-architecture-sweep-refined
+parameters:
+  activation_function:
+    distribution: categorical
+    values: 
+      - relu
+      - elu
+      - leaky_relu
+  batch_size:
+    distribution: categorical
+    values: 
+      - 32
+      - 64
+  epochs:
+    value: 8192
+  l1_regularisation:
+    value: 0
+  l2_regularisation:
+    value: 0
+  label_name:
+    value: free_energy
+  layer_size:
+    distribution: categorical
+    values:
+      - 128
+      - 256
+      - 512
+  learning_rate:
+    distribution: categorical
+    values:
+      - 1e-5
+      - 5e-5
+      - 1e-6
+  loss_function:
+    value: MeanSquaredError
+  n_layers:
+    distribution: int_uniform
+    max: 7
+    min: 3
+  optimizer:
+    value: adam
+  paitence:
+    value: 40
+  splitting_type:
+    value: random
+  training_artifact:
+    value: molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0
+program: model_training/sweep_nn_architecture.py
+project: MolecularMagic

@@ -6,13 +6,15 @@ Requires cclib and bz2 to be installed
 """
 from os import PathLike
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Union
 import openbabel.pybel as pb
 import cclib
 import bz2
 from molmagic.config import extraction as cfg
 import tarfile
+from molmagic.config import qm9_exclude
 from tqdm import tqdm
+from rdkit import Chem
 
 
 def parse_files(paths: list[Path]) -> Iterable[pb.Molecule]:
@@ -64,6 +66,27 @@ def parse_tar_archive(
             )
 
             yield mol
+
+
+def parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
+    # Walk the basepath directory and discover all the
+    # g09 formatted output files
+    matched_paths = list(input_path.glob("./**/*f.out"))
+    molecules = parse_files(matched_paths)
+    n_instances = len(matched_paths)
+    return molecules, n_instances
+
+
+def parse_tar_dir(input_path: Path):
+    # Check the file is readable
+    if not tarfile.is_tarfile(input_path):
+        raise tarfile.ReadError("Tarfile is not readable")
+    # Autodetect the internal format from the filename
+    fmt = input_path.name.split(".")[-2]
+    # Get the number of entries in the archive
+    with tarfile.open(input_path) as archive:
+        n_instances = sum(1 for member in archive if member.isreg())
+    return parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
 def check_convergence(path: Path) -> bool:
@@ -147,6 +170,21 @@ def read_sdf_archive(archive_path: Path) -> Iterable[pb.Molecule]:
                 yield pb.readstring(format="sdf", string=sdf_string)
 
 
+def convert_pb_to_rdkit(
+    molecules: Union[pb.Molecule, list[pb.Molecule]]
+) -> Chem.rdmolfiles.SDMolSupplier:
+    """Convert a pybel molecule(s) into an rdkit supplier (list of molecules) using SDF strings as an intermediary"""
+    # Write to SDF
+    if isinstance(molecules, pb.Molecule):
+        molecules = [molecules]
+    sdf_data = "".join(map(lambda x: x.write("sdf"), molecules))
+
+    # Read from SDF
+    supplier = Chem.rdmolfiles.SDMolSupplier()
+    supplier.SetData(sdf_data)
+    return supplier
+
+
 def write_compressed_sdf(
     mol_subset: list[pb.Molecule], outpath: PathLike, n_instances: int = None
 ) -> int:
@@ -157,7 +195,9 @@ def write_compressed_sdf(
     n_mols = 0
     with outpath.open("wb") as buffer:
         # Iterate the molecules
-        for mol in tqdm(mol_subset, total=n_instances if n_instances else None, leave=False):
+        for mol in tqdm(
+            mol_subset, total=n_instances if n_instances else None, leave=False
+        ):
             # Pybel returns a string if no output file is provided
             raw_output: str = mol.write(format=cfg["output-format"])
             # Encode the string to utf8 bytes

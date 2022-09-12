@@ -1,0 +1,57 @@
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+method: grid
+metric:
+  goal: minimize
+  name: val_mae
+name: adaboost-architecture-sweep
+parameters:
+  label_name:
+    value: free_energy
+  learning_rate:
+    distribution: categorical
+    values:
+      - 0.01
+      - 0.05
+      - 0.1
+      - 0.5
+      - 0.75
+      - 1
+  loss_function:
+    distribution: categorical
+    values:
+      - linear
+      - square
+      - exponential
+  n_estimators:
+    distribution: categorical
+    values:
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+      - 128
+  ridge_alpha:
+    distribution: categorical
+    values:
+      - 1
+      - 0.5
+      - 0.1
+      - 0.05
+      - 0.01
+      - 0.005
+      - 0.001
+      - 0.0005
+      - 0.0001
+      - 0.00005
+      - 0.00001
+  splitting_type:
+    value: random
+  training_artifact:
+    value: molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0
+program: model_training/sweep_adaboost_architecture.py
+project: MolecularMagic

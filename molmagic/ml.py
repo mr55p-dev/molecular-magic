@@ -2,7 +2,7 @@ import shutil
 import pickle
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 import tensorflow as tf
@@ -34,13 +34,31 @@ class WandBRun:
 run_controller = WandBRun()
 
 
-def get_model_artifact(name: str) -> tf.keras.Model:
+def get_keras_model(artifact: Union[str, wandb.Artifact]) -> tf.keras.Model:
     """Download a model by name"""
-    artifact = run_controller.use_run().use_artifact(name, type="model")
-    model_path = Path(artifact.download())
+    artifact_data = run_controller.use_run().use_artifact(artifact, type="model")
+    model_path = Path(artifact_data.download())
     model = tf.keras.models.load_model(model_path / "model")
     shutil.rmtree(model_path)
     return model
+
+
+def get_sklearn_model(artifact: Union[str, wandb.Artifact]) -> Path:
+    """Download an SKLearn model by name"""
+    artifact_data = run_controller.use_run().use_artifact(artifact, type="model")
+    return Path(artifact_data.download()) / "model" / "model"
+
+
+def get_artifact_of_kind(run_name: str, kind: str) -> wandb.Artifact:
+    """Get an artifact produced by a run based on the type generated"""
+    api = wandb.Api()
+    artifacts = [
+        artifact
+        for artifact in api.run(run_name).logged_artifacts()
+        if artifact.type == kind
+    ]
+    assert len(artifacts) == 1
+    return artifacts[0]
 
 
 def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
@@ -50,11 +68,11 @@ def get_vector_parent(name: str, project: str = "MolecularMagic") -> Path:
 
     producer_run = artifact.logged_by()
     consumed_artifcacts = producer_run.used_artifacts()
-    consumed_datasets = [i for i in consumed_artifcacts if i.type == "dataset"]
+    consumed_datasets = [i for i in consumed_artifcacts if i.type == "filtered-dataset"]
     assert len(consumed_datasets) == 1
 
     producer_dataset = consumed_datasets[0]
-    return Path(producer_dataset.download())
+    return Path(producer_dataset.download()) / "archive.sdf.bz2"
 
 
 def get_vector_artifact(name: str) -> Path:
@@ -65,6 +83,20 @@ def get_vector_artifact(name: str) -> Path:
     return Path(download_path)
 
 
+def get_vector_metadata(name: Union[str, wandb.Artifact]) -> Path:
+    """Download a metadata file by artifact name"""
+    artifact = run_controller.use_run().use_artifact(name, type="vectors")
+    metadata_reference = artifact.get_path("metadata.yml")
+    return Path(metadata_reference.download())
+
+
+def get_parser_artifact(name: str) -> Path:
+    run = run_controller.use_run(job_type="filter")
+    artifact = run.use_artifact(name, type="dataset")
+    download_path = artifact.download()
+    return Path(download_path) / "archive.sdf.bz2"
+
+
 def get_dataset_artifact(name: str) -> Path:
     run = run_controller.use_run(job_type="vectorizer")
     artifact = run.use_artifact(name, type="dataset")
@@ -72,7 +104,16 @@ def get_dataset_artifact(name: str) -> Path:
     return Path(download_path) / "archive.sdf.bz2"
 
 
-def log_parser_artifact(artifact_name: str, output_path: Path, n_molecules: int) -> None:
+def get_filtered_artifact(name: str) -> Path:
+    run = run_controller.use_run(job_type="filter")
+    artifact = run.use_artifact(name, type="filtered-dataset")
+    download_path = artifact.download()
+    return Path(download_path) / "archive.sdf.bz2"
+
+
+def log_parser_artifact(
+    artifact_name: str, output_path: Path, n_molecules: int
+) -> None:
     """Save a parsed output file"""
     run = run_controller.use_run(job_type="parser")
     artifact = wandb.Artifact(artifact_name, type="dataset")
@@ -87,26 +128,38 @@ def log_parser_artifact(artifact_name: str, output_path: Path, n_molecules: int)
     run.log_artifact(artifact)
 
 
+def log_filter_artifact(
+    artifact_name: str, output_path: Path, n_molecules: int
+) -> None:
+    """Save a filtered output file"""
+    run = run_controller.use_run(job_type="filter")
+    artifact = wandb.Artifact(artifact_name, type="filtered-dataset")
+    artifact.add_file(output_path, name="archive.sdf.bz2")
+
+    # Save metadata
+    artifact.metadata.update(cfg_agg)
+    artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
+    artifact.metadata.update({"num_mols": n_molecules})
+
+    # Upload and delete the archive
+    run.log_artifact(artifact)
+
+
 def log_vector_artifact(
-    args,
-    feature_vector,
-    features_output,
-    labels_output,
-    identities_output,
-    metadata_output,
+    artifact_name: str, feature_vector, output_dir: Path, plot_histograms=False
 ):
     """Save generated vectors, metadata and histograms"""
     run = run_controller.use_run(job_type="vectorizer")
     artifact = wandb.Artifact(
-        name=args.artifact,
+        name=artifact_name,
         type="vectors",
-        description="Output of molmagic.cli.vectorize for the {args.artifact} dataset",
+        description=f"Output of molmagic.cli.vectorize for the {artifact_name} dataset",
     )
     # Upload the files
-    artifact.add_file(features_output, name="features.npy")
-    artifact.add_file(labels_output, name="labels.npy")
-    artifact.add_file(identities_output, name="identities.npy")
-    artifact.add_file(metadata_output, name="metadata.yml")
+    artifact.add_file(output_dir / "features.npy", name="features.npy")
+    artifact.add_file(output_dir / "labels.npy", name="labels.npy")
+    artifact.add_file(output_dir / "identities.npy", name="identities.npy")
+    artifact.add_file(output_dir / "metadata.yml", name="metadata.yml")
 
     # Save metadata
     artifact.metadata.update(cfg_agg)
@@ -118,23 +171,17 @@ def log_vector_artifact(
     )
 
     # Check if we need to log figures
-    if args.plot_histograms:
+    if plot_histograms:
         artifact.add_dir(cfg_plot["save-dir"])
 
     run.log_artifact(artifact)
 
 
-def log_model(model: tf.keras.Model) -> None:
+def log_keras_model(model: tf.keras.Model) -> None:
     """Save a model to weights and baises as an artifact"""
     run = run_controller.use_run(job_type="training")
     output_path = Path("/tmp/") / run.name
-    if hasattr(model, 'save'):
-        model.save(output_path)
-    else:
-        out_file = output_path / "model"
-        out_file.parent.mkdir()
-        with out_file.open('wb') as f:
-            f.write(pickle.dumps(model))
+    model.save(output_path)
 
     artifact = wandb.Artifact(run.name, type="model")
     artifact.add_dir(output_path, name="model")
@@ -145,11 +192,33 @@ def log_model(model: tf.keras.Model) -> None:
     )
 
 
+def log_sklearn_model(model) -> None:
+    # Setup the run and save the model
+    run = run_controller.use_run(job_type="training")
+    output_path = Path("/tmp/") / run.name
+    out_file = output_path / "model"
+    out_file.parent.mkdir()
+
+    # Write out the model
+    with out_file.open("wb") as f:
+        f.write(pickle.dumps(model))
+
+    # Save the artifact
+    artifact = wandb.Artifact(run.name, type="model")
+    artifact.add_dir(output_path, name="model")
+    run.log_artifact(artifact)
+
+    # Delete the model
+    shutil.rmtree(
+        output_path, onerror=lambda *_: print("Failed to clean up model upload")
+    )
+
+
 def get_label_type(arr: np.ndarray, label_type: str) -> np.ndarray:
     if label_type == "electronic_energy":
-        return arr[:, 0]
+        return arr[:, 0].reshape(-1, 1)
     elif label_type == "free_energy":
-        return arr[:, 1]
+        return arr[:, 1].reshape(-1, 1)
 
 
 def get_split(type: str) -> Callable:

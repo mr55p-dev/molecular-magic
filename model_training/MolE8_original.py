@@ -113,4 +113,4 @@ with strategy.scope():
     )
 
     # Save the model to wandb
-    ml.log_model(model)
+    ml.log_keras_model(model)

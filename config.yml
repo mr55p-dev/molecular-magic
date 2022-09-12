@@ -2,7 +2,7 @@ extraction:
   # Filter configuration
   output-format: "sdf"
   bond-min-distance: 0
-  bond-max-distance: 1.6
+  bond-max-distance: 100 # Practically infinite; why constrain bond length?
   min-heavy-atoms: 9
   max-heavy-atoms: 12
 
@@ -17,7 +17,8 @@ extraction:
 aggregation:
   # Histogram creation configuration
   resolution: 10000
-  bandwidth: 0.07  # scott, sliverman, float or none
+  bond-bandwidth: 0.07  # scott, sliverman, float or none
+  angle-bandwidth: 0.07  # scott, sliverman, float or none
   use-minmax: true
   weighted-bins: false
 
@@ -27,6 +28,7 @@ aggregation:
     - 6
     - 7
     - 8
+    - 9
   amine-types:
     - 1
     - 2

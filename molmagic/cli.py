@@ -14,22 +14,17 @@ fmt:
 
 Depends on `cclib` and `bz2`.
 """
+import shutil
 import sys
-import tarfile
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from tarfile import is_tarfile
-from typing import Iterable
 
 import numpy as np
 import oyaml as yaml
-from openbabel import pybel as pb
 from tqdm import tqdm
 
 from molmagic import ml, parser, vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic.config import extraction as cfg_ext
-from molmagic.config import qm9_exclude
 from molmagic.rules import FilteredMols, global_filters, local_filters
 
 
@@ -49,7 +44,6 @@ def parse(args: Namespace) -> None:
     """
 
     input_path: Path = args.input
-    output_path: Path = args.output
 
     # Check the path exists
     if not input_path.exists():
@@ -57,15 +51,15 @@ def parse(args: Namespace) -> None:
 
     # Detect if this is a tar archive to extract
     if input_path.is_file():
-        molecules, n_instances = _parse_tar_dir(input_path)
+        molecules, n_instances = parser.parse_tar_dir(input_path)
     # Detect if this is a directory
     elif input_path.is_dir():
-        molecules, n_instances = _parse_g09_dir(input_path)
+        molecules, n_instances = parser.parse_g09_dir(input_path)
     else:
         raise NotImplementedError("Cannot handle parsing this kind of structure.")
 
     # Check the ouptut directory exists, and create if it does not
-    output_path = Path(output_path or "/tmp/archive.sdf.bz2")
+    output_path = Path(args.output or "/tmp/archive.sdf.bz2")
 
     # Filter
     molecules = list(
@@ -86,6 +80,9 @@ def parse(args: Namespace) -> None:
     # Write this archive to a wandb archive (if asked to)
     if args.artifact:
         ml.log_parser_artifact(args.artifact, output_path, n_molecules)
+
+    # Unlink the file if we are not meant to save it
+    if args.artifact and not args.output:
         output_path.unlink()
 
 
@@ -96,7 +93,7 @@ def molecule_filter(args: Namespace) -> None:
         infile = args.input_file
     else:
         ml.run_controller.use_run("filter")
-        infile = ml.get_dataset_artifact(args.input_artifact)
+        infile = ml.get_parser_artifact(args.input_artifact)
 
     # Read the archive into memory and filter using the local filters
     molecules = parser.read_sdf_archive(infile)
@@ -120,31 +117,10 @@ def molecule_filter(args: Namespace) -> None:
 
     # Save artifact if asked
     if args.output_artifact:
-        ml.log_parser_artifact(args.output_artifact, output_file, n_molecules)
+        ml.log_filter_artifact(args.output_artifact, output_file, n_molecules)
         # Delete tempoary archive if asked
         if not args.output_file:
             output_file.unlink()
-
-
-def _parse_g09_dir(input_path: Path) -> tuple[Iterable[pb.Molecule], int]:
-    # Walk the basepath directory and discover all the
-    # g09 formatted output files
-    matched_paths = list(input_path.glob("./**/*f.out"))
-    molecules = parser.parse_files(matched_paths)
-    n_instances = len(matched_paths)
-    return molecules, n_instances
-
-
-def _parse_tar_dir(input_path: Path):
-    # Check the file is readable
-    if not is_tarfile(input_path):
-        raise tarfile.ReadError("Tarfile is not readable")
-    # Autodetect the internal format from the filename
-    fmt = input_path.name.split(".")[-2]
-    # Get the number of entries in the archive
-    with tarfile.open(input_path) as archive:
-        n_instances = sum(1 for member in archive if member.isreg())
-    return parser.parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
 def vectorize(args: Namespace) -> None:
@@ -178,8 +154,7 @@ def vectorize(args: Namespace) -> None:
         metadata_file = args.metadata
     elif args.remote_metadata:
         # Define the run context
-        run_dir = ml.get_vector_artifact(args.remote_metadata)
-        metadata_file = run_dir / "metadata.yml"
+        metadata_file = ml.get_vector_metadata(args.remote_metadata)
 
     if metadata_file:
         # Load the original configuration
@@ -205,9 +180,9 @@ def vectorize(args: Namespace) -> None:
 
     # Check the output path exists
     if not args.output:
-        args.output = Path("/tmp/")
-    else:
-        args.output.mkdir(exist_ok=True)
+        args.output = Path("/tmp/") / ml.run_controller.run.name
+
+    args.output.mkdir(exist_ok=True)
 
     # Define the paths
     features_output = args.output / "features.npy"
@@ -224,16 +199,13 @@ def vectorize(args: Namespace) -> None:
     if not (args.metadata or args.remote_metadata):
         with (metadata_output).open("w") as metadata_file:
             yaml.dump(calculated_metadata, metadata_file)
+    else:
+        shutil.copy(metadata_file, args.output)
 
     # Create an artifact if we are asked to do so
     if args.artifact:
         ml.log_vector_artifact(
-            args,
-            feature_vector,
-            features_output,
-            labels_output,
-            identities_output,
-            metadata_output,
+            args.artifact, feature_vector, args.output, args.plot_histograms
         )
 
     # Unlink the created files if we are not saving output
