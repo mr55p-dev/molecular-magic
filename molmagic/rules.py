@@ -19,6 +19,7 @@ class FilteredMols:
     tetravalent_nitrogen = 0
     carbanion = 0
     disjoint_structure = 0
+    pentavalent_carbon = 0
     total_local = 0
 
     @staticmethod
@@ -55,6 +56,13 @@ def global_filters(molecule: pb.Molecule) -> bool:
     if "." in smiles:
         FilteredMols.disjoint_structure += 1
         return False
+
+    # Disallow pentavalent carbons
+    for atom in filter(lambda a: a.atomicnum == 6, molecule.atoms):
+        if atom.OBAtom.GetTotalValence() == 5:
+            FilteredMols.pentavalent_carbon += 1
+            return False
+
     return True
 
 
@@ -68,6 +76,10 @@ def local_filters(molecule: pb.Molecule) -> bool:
     Can make a preprocessing step where the combined data is stored as keys
     in the sdf file and then a second script to read those sdfs and their
     properties"""
+    # Do not run any more filters if we dont have to
+    if not cfg["use-filters"]:
+        return True
+
     mol = molecule.OBMol
     allow = True
 
