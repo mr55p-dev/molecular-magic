@@ -13,6 +13,8 @@ early_terminate:
   type: hyperband
   min_iter: 20
 parameters:
+  seed:
+    value: 50
   splitting_type:
     value: random
   label_name:
@@ -32,7 +34,7 @@ parameters:
   optimizer:
     value: adam
   training_artifact:
-    value: "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
+    value: molecular-magicians/MolecularMagic/qm9-std-train-0.48-scott:latest
   n_layers:
     distribution: int_uniform
     min: 1

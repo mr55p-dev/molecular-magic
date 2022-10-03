@@ -10,10 +10,14 @@ metric:
   goal: minimize
   name: val_mse
 parameters:
-  dataset_base:
-    value: "qm9-std-HCNOF"
-  dataset_version:
-    value: "v3"
+  seed:
+    value: 50
+  split_type:
+    value: random
+  label_name:
+    value: "free_energy"
+  train_artifact:
+    value: "qm9-std-train:latest"
   bond-bandwidth:
     values: [0.02, 0.04, 0.08, 0.16, 0.32, 0.48, 0.64, 0.96, "scott"]
   angle-bandwidth:
