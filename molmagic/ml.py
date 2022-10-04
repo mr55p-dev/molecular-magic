@@ -9,7 +9,7 @@ import tensorflow as tf
 import wandb
 from sklearn.model_selection import train_test_split
 
-from molmagic.config import aggregation as cfg_agg, plotting as cfg_plot
+from molmagic.config import aggregation as cfg_agg, plotting as cfg_plot, extraction as cfg_ext
 from molmagic.rules import FilteredMols
 
 
@@ -138,6 +138,7 @@ def log_filter_artifact(
 
     # Save metadata
     artifact.metadata.update(cfg_agg)
+    artifact.metadata.update(cfg_ext)
     artifact.metadata.update({"filter_stats": FilteredMols.get_dict()})
     artifact.metadata.update({"num_mols": n_molecules})
 
@@ -305,3 +306,7 @@ def stoichiometric_split(
     print(f"Train set: {X_train.shape[0]}\nTest set: {X_test.shape[0]}")
 
     return X_train, X_test, y_train, y_test
+
+
+# background include prior distribution and filtering of QM9
+# Trans fused rings in the second error set
