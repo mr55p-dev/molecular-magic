@@ -97,6 +97,7 @@ def molecule_filter(args: Namespace) -> None:
 
     # Read the archive into memory and filter using the local filters
     molecules = parser.read_sdf_archive(infile)
+    molecules = filter(molecular_weight_filter, molecules)
     molecules = list(
         tqdm(
             filter(local_filters, molecules),
