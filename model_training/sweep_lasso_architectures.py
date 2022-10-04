@@ -1,16 +1,11 @@
 # Imports and initialisation
-from random import random
 import numpy as np
 import pandas as pd
 import wandb
 from molmagic import ml
 from molmagic.ml import run_controller
-from sklearn.linear_model import Ridge
-from sklearn.metrics import (
-    mean_squared_error,
-    mean_absolute_error,
-    mean_absolute_percentage_error,
-)
+from sklearn.linear_model import Lasso
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 
 """Parameters to sweep
@@ -25,17 +20,19 @@ The major bottleneck for most cases will be transforming the molecules into the
 aggregated representation
 """
 
+
 # WandB setup (populated due to the sweep)
 run = wandb.init()
 run_controller.set_run(run)
-run.config.update({"algorithm": "Ridge"})
+run.config.update({"algorithm": "Elastic"})
 
 # Experimental setup
 seed = run.config["seed"]
 split_type = run.config["splitting_type"]
 label_type = run.config["label_name"]
 training_artifact = run.config["training_artifact"]
-alpha = run.config["ridge_alpha"]
+alpha = run.config["lasso_alpha"]
+max_iter = run.config["max_iter"]
 
 # Dataset loading
 basepath = ml.get_vector_artifact(training_artifact)
@@ -48,7 +45,7 @@ splitter = ml.get_split(split_type)
 X_train, X_test, y_train, y_test = splitter(X, y, random_state=seed)
 
 # Define the model
-model = Ridge(alpha=alpha, random_state=seed)
+model = Lasso(random_state=seed, max_iter=max_iter, alpha=alpha)
 
 # Fit the model
 fitted_model = model.fit(X_train, y_train.squeeze())

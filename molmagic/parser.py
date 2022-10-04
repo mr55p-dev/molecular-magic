@@ -55,6 +55,7 @@ def parse_tar_archive(
 
             # Construct openbabel
             mol = pb.readstring(format="xyz", string=contents.decode("utf-8"))
+            mol.OBMol.AddHydrogens()
 
             # Calculate the label properties
             scf_energy = float(fields[12]) * 627.503  # U @ 298K (kcal/mol)
@@ -87,6 +88,14 @@ def parse_tar_dir(input_path: Path):
     with tarfile.open(input_path) as archive:
         n_instances = sum(1 for member in archive if member.isreg())
     return parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
+
+
+def parse_sdf_archive(input_path: Path):
+    # Iterate to get the number of instances
+    with bz2.BZ2File(input_path, mode="rb") as archive:
+        n_instances = sum(1 for line in archive.readlines() if line == b"$$$$")
+
+    return read_sdf_archive(input_path), n_instances
 
 
 def check_convergence(path: Path) -> bool:
@@ -182,6 +191,11 @@ def convert_pb_to_rdkit(
     # Read from SDF
     supplier = Chem.rdmolfiles.SDMolSupplier()
     supplier.SetData(sdf_data)
+
+    for mol in enumerate(supplier):
+        if not mol:
+            print("Epic fail")
+
     return supplier
 
 

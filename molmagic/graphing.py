@@ -5,6 +5,7 @@ import numpy as np
 from molmagic.config import plotting as cfg, element_map
 
 
+if "plot_style" in (cfg or []):
 sns.set_style(cfg["plot-style"])
 
 

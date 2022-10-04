@@ -11,6 +11,8 @@ metric:
   name: val_loss
 name: nn-architecture-sweep-refined
 parameters:
+  seed:
+    value: 50
   activation_function:
     distribution: categorical
     values: 
@@ -55,6 +57,6 @@ parameters:
   splitting_type:
     value: random
   training_artifact:
-    value: molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0
+    value: molecular-magicians/MolecularMagic/qm9-std-train-0.48-scott:latest
 program: model_training/sweep_nn_architecture.py
 project: MolecularMagic

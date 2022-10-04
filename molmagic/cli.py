@@ -25,7 +25,8 @@ from tqdm import tqdm
 
 from molmagic import ml, parser, vectorizer
 from molmagic.aggregator import autobin_mols, bin_mols
-from molmagic.rules import FilteredMols, global_filters, local_filters
+from molmagic.rules import (FilteredMols, global_filters, local_filters,
+                            molecular_weight_filter)
 
 
 def parse(args: Namespace) -> None:
@@ -50,7 +51,9 @@ def parse(args: Namespace) -> None:
         print(f"{input_path} does not exist.")
 
     # Detect if this is a tar archive to extract
-    if input_path.is_file():
+    if args.reparse:
+        molecules, n_instances = parser.parse_sdf_archive(input_path)
+    elif input_path.is_file():
         molecules, n_instances = parser.parse_tar_dir(input_path)
     # Detect if this is a directory
     elif input_path.is_dir():
@@ -97,6 +100,7 @@ def molecule_filter(args: Namespace) -> None:
 
     # Read the archive into memory and filter using the local filters
     molecules = parser.read_sdf_archive(infile)
+    molecules = filter(molecular_weight_filter, molecules)
     molecules = list(
         tqdm(
             filter(local_filters, molecules),
@@ -130,7 +134,7 @@ def vectorize(args: Namespace) -> None:
     # If no archive is specified load an artifact
     if args.load:
         ml.run_controller.use_run("vectorizer")
-        input_path = ml.get_dataset_artifact(args.load)
+        input_path = ml.get_filtered_artifact(args.load)
     else:
         input_path = args.input
 
@@ -257,6 +261,13 @@ def main(argv=sys.argv):
         "--artifact",
         type=str,
         help="The name of this artifact in weights and biases (default not saved)",
+    )
+    parser.add_argument(
+        "-r",
+        "--reparse",
+        action="store_true",
+        default=False,
+        help="Is the passed file already a processed SDF archive?",
     )
     parser.set_defaults(func=parse)
 

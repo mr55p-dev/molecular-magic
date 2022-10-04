@@ -19,6 +19,7 @@ class FilteredMols:
     tetravalent_nitrogen = 0
     carbanion = 0
     disjoint_structure = 0
+    pentavalent_carbon = 0
     total_local = 0
 
     @staticmethod
@@ -55,7 +56,30 @@ def global_filters(molecule: pb.Molecule) -> bool:
     if "." in smiles:
         FilteredMols.disjoint_structure += 1
         return False
+
+    # Disallow pentavalent carbons
+    for atom in filter(lambda a: a.atomicnum == 6, molecule.atoms):
+        if atom.OBAtom.GetTotalValence() == 5:
+            FilteredMols.pentavalent_carbon += 1
+            return False
+
     return True
+
+
+def molecular_weight_filter(molecule: pb.Molecule) -> bool:
+    # Filter out molecules of the wrong size
+    min_heavy_atoms = cfg["min-heavy-atoms"]
+    max_heavy_atoms = cfg["max-heavy-atoms"]
+    num_heavy_atoms = len([i for i in molecule.atoms if i.atomicnum != 1])
+    if (
+        min_heavy_atoms
+        <= num_heavy_atoms
+        <= max_heavy_atoms
+    ):
+        return True
+
+    FilteredMols.heavy_atom += 1
+    return False
 
 
 def local_filters(molecule: pb.Molecule) -> bool:
@@ -68,23 +92,16 @@ def local_filters(molecule: pb.Molecule) -> bool:
     Can make a preprocessing step where the combined data is stored as keys
     in the sdf file and then a second script to read those sdfs and their
     properties"""
+    # Do not run any more filters if we dont have to
+    if not cfg["use-filters"]:
+        return True
+
     mol = molecule.OBMol
     allow = True
 
     # Remove atoms other than HCNO
     if any(i.atomicnum not in cfg_agg["atom-types"] for i in molecule.atoms):
         FilteredMols.other_atom += 1
-        allow = False
-
-    # Filter out molecules of the wrong size
-    min_heavy_atoms = cfg["min-heavy-atoms"]
-    max_heavy_atoms = cfg["max-heavy-atoms"]
-    if not (
-        min_heavy_atoms
-        <= len([i for i in molecule.atoms if i.atomicnum != 1])
-        <= max_heavy_atoms
-    ):
-        FilteredMols.heavy_atom += 1
         allow = False
 
     # Filter free energy == 0

@@ -1,13 +1,16 @@
 import oyaml as yaml
 
 
-with open("config.yml", "r") as f:
-    configuration = yaml.safe_load(f)
-
-
-extraction = configuration["extraction"]
-aggregation = configuration["aggregation"]
-plotting = configuration["plotting"]
+try:
+    with open("config.yml", "r") as f:
+        configuration = yaml.safe_load(f)
+except FileNotFoundError:
+    print("Configuration file not found, skipping")
+    configuration = {}
+finally:
+    extraction = configuration.get("extraction")
+    aggregation = configuration.get("aggregation")
+    plotting = configuration.get("plotting")
 qm9_exclude = [
     21725,
     87037,
