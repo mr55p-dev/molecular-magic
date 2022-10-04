@@ -1,6 +1,6 @@
 project: MolecularMagic
-name: elastic-architecture-sweep
-program: "model_training/sweep_elastic_architecture.py"
+name: ridge-architecture-sweep
+program: "model_training/sweep_ridge_architecture.py"
 method: grid
 command:
   - ${env}
@@ -10,6 +10,8 @@ metric:
   goal: minimize
   name: val_mae
 parameters:
+  seed:
+    value: 50
   splitting_type:
     value: random
   label_name:
@@ -28,4 +30,4 @@ parameters:
       - 0.0001
       - 0
   training_artifact:
-    value: "molecular-magicians/MolecularMagic/qm9-std-HCNOF-0.8-0.32:v0"
+    value: molecular-magicians/MolecularMagic/qm9-std-train-0.48-scott:latest

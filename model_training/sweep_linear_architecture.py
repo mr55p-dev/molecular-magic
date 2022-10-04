@@ -1,11 +1,10 @@
 # Imports and initialisation
-from random import random
 import numpy as np
 import pandas as pd
 import wandb
 from molmagic import ml
 from molmagic.ml import run_controller
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
@@ -26,16 +25,28 @@ aggregated representation
 """
 
 # WandB setup (populated due to the sweep)
-run = wandb.init()
+run = wandb.init(
+    entity="molecular-magicians",
+    project="MolecularMagic",
+    name="linear_regression",
+)
 run_controller.set_run(run)
-run.config.update({"algorithm": "Ridge"})
+run.config.update({"algorithm": "Linear"})
+
+run.config.update(
+    {
+        "seed": 50,
+        "splitting_type": "random",
+        "label_name": "free_energy",
+        "training_artifact": "molecular-magicians/MolecularMagic/qm9-std-train-0.48-scott:latest",
+    }
+)
 
 # Experimental setup
 seed = run.config["seed"]
 split_type = run.config["splitting_type"]
 label_type = run.config["label_name"]
 training_artifact = run.config["training_artifact"]
-alpha = run.config["ridge_alpha"]
 
 # Dataset loading
 basepath = ml.get_vector_artifact(training_artifact)
@@ -48,7 +59,7 @@ splitter = ml.get_split(split_type)
 X_train, X_test, y_train, y_test = splitter(X, y, random_state=seed)
 
 # Define the model
-model = Ridge(alpha=alpha, random_state=seed)
+model = LinearRegression()
 
 # Fit the model
 fitted_model = model.fit(X_train, y_train.squeeze())

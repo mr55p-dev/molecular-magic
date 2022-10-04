@@ -10,6 +10,7 @@ import wandb
 from molmagic import ml
 from molmagic.ml import run_controller
 from wandb.keras import WandbCallback
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 
 
 """Parameters to sweep
@@ -70,17 +71,14 @@ aggregated representation
 """
 
 # TF setup
-random_seed = 50
-tf.random.set_seed(random_seed)
-gpus = tf.config.list_logical_devices("GPU")
-strategy = tf.distribute.MirroredStrategy(gpus)
 
 # WandB setup (populated due to the sweep)
 run = wandb.init()
 run_controller.set_run(run)
-run.config.update({"algorithm": "Keras", "seed": random_seed})
+run.config.update({"algorithm": "Keras"})
 
 # Experimental setup
+random_seed = run.config["seed"]
 split_type = run.config["splitting_type"]
 label_type = run.config["label_name"]
 learning_rate = run.config["learning_rate"]
@@ -96,6 +94,8 @@ loss = run.config["loss_function"]
 optimizer = run.config["optimizer"]
 training_artifact = run.config["training_artifact"]
 
+tf.random.set_seed(random_seed)
+
 # Dataset loading
 basepath = ml.get_vector_artifact(training_artifact)
 
@@ -107,17 +107,15 @@ splitter = ml.get_split(split_type)
 X_train_np, X_test_np, y_train_np, y_test_np = splitter(X, y, random_state=random_seed)
 
 # Convert to tf.data
-# n_devices = len(gpus) if len(gpus) else 1
-n_devices = 1
 train = (
     tf.data.Dataset.from_tensor_slices((X_train_np, y_train_np))
-    .batch(batch_size * n_devices)
+    .batch(batch_size)
     .cache()
     .prefetch(tf.data.AUTOTUNE)
 )
 test = (
     tf.data.Dataset.from_tensor_slices((X_test_np, y_test_np))
-    .batch(batch_size * n_devices)
+    .batch(batch_size)
     .cache()
     .prefetch(tf.data.AUTOTUNE)
 )
@@ -174,18 +172,22 @@ history = model.fit(
 # Save the model to wandb
 ml.log_keras_model(model)
 
-# Make predictions on the train set for error distribution analysis
-y_pred = model.predict(test)
+# Make predictions on the test set for error distribution analysis
+y_pred = model.predict(X_test_np).squeeze()
+val_mse = mean_squared_error(y_test_np.squeeze(), y_pred)
+val_mae = mean_absolute_error(y_test_np.squeeze(), y_pred)
+val_mape = mean_absolute_percentage_error(y_test_np.squeeze(), y_pred)
 
-absolute_err = np.abs(y_test_np - y_pred)
-err_table = wandb.Table(data=pd.DataFrame(absolute_err, columns=["Absolute error"]))
+data = np.concatenate((y_test_np.reshape(-1, 1), y_pred.reshape(-1, 1)), axis=1)
+errors = pd.DataFrame(data, columns=["label", "prediction"])
+
+err_table = wandb.Table(data=errors)
 
 wandb.log(
     {
+        "val_mae": val_mae,
+        "val_mse": val_mse,
+        "val_mape": val_mape,
         "Error table": err_table,
-        "Error histogram": wandb.plot.histogram(
-            err_table, "Absolute error", "Absolute error distribution"
-        ),
     }
 )
-# scope.__exit__()
