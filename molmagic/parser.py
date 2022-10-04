@@ -90,6 +90,14 @@ def parse_tar_dir(input_path: Path):
     return parse_tar_archive(input_path, fmt, exclude=qm9_exclude), n_instances
 
 
+def parse_sdf_archive(input_path: Path):
+    # Iterate to get the number of instances
+    with bz2.BZ2File(input_path, mode="rb") as archive:
+        n_instances = sum(1 for line in archive.readlines() if line == b"$$$$")
+
+    return read_sdf_archive(input_path), n_instances
+
+
 def check_convergence(path: Path) -> bool:
     """Open a file and check that its converged.
 
