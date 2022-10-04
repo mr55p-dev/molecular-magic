@@ -5,14 +5,14 @@ creating vectors from those histograms
 from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, TypeVar
-from tqdm import tqdm
-from molmagic.graphing import get_plot_name
-from molmagic.vectorizer import HistogramData, MoleculeData
-from molmagic.config import aggregation as cfg
-from scipy.stats import gaussian_kde
-import numpy as np
-from molmagic.graphing import draw_and_save_hist
 
+import numpy as np
+from scipy.stats import gaussian_kde
+from tqdm import tqdm
+
+from molmagic.config import aggregation as cfg
+from molmagic.graphing import draw_and_save_hist, get_plot_name
+from molmagic.vectorizer import HistogramData, MoleculeData
 
 # Get config vars
 resolution = cfg["resolution"]
@@ -146,6 +146,16 @@ def autobin_feature(
     # the object dict directly)
     feature_data = _get_feature_data(mol_data, feature)
 
+    aggregate_data = _get_feature_aggregate(feature_data, feature)
+
+    # Compute the bins for every type
+    type_bins = _get_feature_bins(feature, graphing_callback, aggregate_data)
+
+    # Go over the type bins and get the vectors for each molecule
+    return _assign_feature_bins(type_bins, feature_data), type_bins
+
+
+def _get_feature_aggregate(feature_data, feature: str) -> dict[tuple, list[float]]:
     # Get every key from every dict in the molecules data and select
     # only unique ones
     feature_types = set(i for d in feature_data for i in d)
@@ -156,11 +166,7 @@ def autobin_feature(
         for instance in feature_data:
             aggregate_data[feature_type].append(instance[feature_type])
 
-    # Compute the bins for every type
-    type_bins = _get_feature_bins(feature, graphing_callback, aggregate_data)
-
-    # Go over the type bins and get the vectors for each molecule
-    return _assign_feature_bins(type_bins, feature_data), type_bins
+    return aggregate_data
 
 
 def _make_static_parts(
@@ -230,6 +236,18 @@ def _get_feature_bins(
     return type_bins
 
 
+def _flatten_feature_data(feature_data) -> dict[tuple, list[float]]:
+    """Flattens out all the instances of a feature data object.
+    Note this is a library method and not actually used internally, see the
+    definition in _get_feature_bins for the underlying implementation. This
+    is more for external usage."""
+    flattened_feature_data = defaultdict(list)
+    for k, v in feature_data.items():
+        flattened_feature_data[k] = [i for j in v for i in j]
+
+    return flattened_feature_data
+
+
 def _assign_feature_bins(
     type_bins: TypeBinDict, feature_data: list[HistogramData]
 ) -> np.ndarray:
@@ -245,7 +263,7 @@ def _assign_feature_bins(
         type_bins.items(), leave=False, desc="Assigning bins"
     ):
         if "weighted-bins" in cfg and cfg["weighted-bins"]:
-            f = partial(_assign_type_bins_weighted, bins=bin_values)
+            raise NotImplementedError("Weighted bins have not been implemented")
         else:
             f = partial(_assign_type_bins, bins=bin_values)
         vecs = map(f, (i[bin_key] for i in feature_data))
@@ -365,79 +383,6 @@ def _assign_type_bins(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
     # TO-DO: This may be able to be improved using counter or list comprehension
 
     return vec
-
-
-def _assign_type_bins_weighted(data: np.ndarray, bins: np.ndarray) -> np.ndarray:
-    """Assign each value to a bin and return a vector where each item
-    corresponds to the number of occurences of items falling into bin n.
-    This variant is weighted such that if a value falls between two others
-    in the list, the value of the vector is equal to the normalized absolute
-    difference between the value of the instance and the value of the bin.
-
-    eg: given a set of data [0, 20, 40] and bins [10, 30], the resultant vector
-    would be [1, 0.5, 1]. Note that if there are multiple values assigned
-    to the same bin then the weights for that value are summed, eg for the same bins
-    but data [0, 20, 20, 20, 40] we would get the vector [1, 1.5, 1].
-
-    Note the returned matrix is of shape len(bins) + 1, as there will be
-    n+1 bins defined by n boundaries (additional bins below and above the
-    specified ones are valid"""
-    # Using bins sorted low to high and right=False,
-    # the criterion is bins[i-1] <= x < bins[i]
-
-    # Not implemented due to some confusion around exactly how this should work
-    raise NotImplementedError("Weighted features is not currently implemented.")
-    # vec = np.zeros((len(bins) + 1,))
-    # assignment = np.digitize(data, bins)
-
-    # # Compute the bin means:
-    # if len(bins) >= 3:
-    #     ...
-    # else:
-    #     # Normal vectorization
-
-    # for instance, bin in zip(data, assignment):
-    #     if bin == 0 or bin == len(bins):
-    #         vec[bin] += 1
-    #     else:
-    #         """
-    #         NEED TO FIGURE OUT WHATS GOING ON WITH THESE BINS
-    #         SEE IPAD NOTESw
-    #         """
-    #         bin_centers = _get_bin_centers(bins[])
-    #         bin_center = (
-    #             np.mean(bins[bin - 1 : bin + 1])
-    #             if instance < bins[bin]
-    #             else np.mean(bins[bin : bin + 2])
-    #         )
-
-    # # Handle np.inf bins
-    # if len(bins) == 2 and (np.asarray(bins) == np.array([-np.inf, np.inf])).all():
-    #     return np.ones(1) * len(data)
-
-    # vec = np.zeros((len(bins),))
-    # # Iterate over each value in the data
-    # for instance in data:
-
-    #     # Compute the index which the value should be inserted at to
-    #     # maintain order (this will be the value on the right hand side)
-    #     # of instance in the list
-    #     upper_idx = np.searchsorted(bins, instance, side="left")
-    #     # If the upper index is the start of the list then we can just increment the start
-    #     if upper_idx == 0:
-    #         vec[0] += 1
-    #     # If the upper index is past the end of the list then we increment the end
-    #     elif upper_idx == len(bins):
-    #         vec[-1] += 1
-    #     else:
-    #         # The lower index will be just one behind the upper
-    #         lower_idx = upper_idx - 1
-    #         vec[upper_idx] += (instance - bins[lower_idx]) / (
-    #             bins[upper_idx] - bins[lower_idx]
-    #         )
-    #         vec[lower_idx] += 1 - vec[upper_idx]
-
-    # return vec
 
 
 def _get_feature_data(mols: list[MoleculeData], feature: str) -> list[Any]:

@@ -55,6 +55,7 @@ def parse_tar_archive(
 
             # Construct openbabel
             mol = pb.readstring(format="xyz", string=contents.decode("utf-8"))
+            mol.OBMol.AddHydrogens()
 
             # Calculate the label properties
             scf_energy = float(fields[12]) * 627.503  # U @ 298K (kcal/mol)
@@ -182,6 +183,11 @@ def convert_pb_to_rdkit(
     # Read from SDF
     supplier = Chem.rdmolfiles.SDMolSupplier()
     supplier.SetData(sdf_data)
+
+    for mol in enumerate(supplier):
+        if not mol:
+            print("Epic fail")
+
     return supplier
 
 
